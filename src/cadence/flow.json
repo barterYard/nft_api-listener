@@ -1,0 +1,100 @@
+{
+  "contracts": {
+    "NonFungibleToken": {
+      "source": "./contracts/lib/NonFungibleToken.cdc",
+      "aliases": {
+        "emulator": "f8d6e0586b0a20c7",
+        "testnet": "631e88ae7f1d7c20",
+        "mainnet": "1d7e57aa55817448"
+      }
+    },
+    "NFTStorefront": {
+      "source": "./contracts/lib/StoreFront.cdc",
+      "aliases": {
+        "emulator": "f8d6e0586b0a20c7",
+        "testnet": "0x4eb8a10cb9f87357",
+        "mainnet": "0x4eb8a10cb9f87357"
+      }
+    },
+    "NFTStorefrontV2": {
+      "source": "./contracts/lib/StoreFrontV2.cdc",
+      "aliases": {
+        "emulator": "f8d6e0586b0a20c7",
+        "testnet": "0x4eb8a10cb9f87357",
+        "mainnet": "0x4eb8a10cb9f87357"
+      }
+    },
+    "MetadataViews": {
+      "source": "./contracts/lib/MetadataViews.cdc",
+      "aliases": {
+        "emulator": "f8d6e0586b0a20c7",
+        "testnet": "631e88ae7f1d7c20",
+        "mainnet": "1d7e57aa55817448"
+      }
+    },
+    "FungibleToken": {
+      "source": "./contracts/lib/FungibleToken.cdc",
+      "aliases": {
+        "emulator": "ee82856bf20e2aa6",
+        "testnet": "9a0766d93b6608b7",
+        "mainnet": "f233dcee88fe0abe"
+      }
+    },
+    "FlowToken": {
+      "source": "./contracts/lib/FlowToken.cdc",
+      "aliases": {
+        "emulator": "0ae53cb6e3f42a79",
+        "testnet": "7e60df042a9c0868",
+        "mainnet": "1654653399040a61"
+      }
+    },
+    "BarterYardPackNFT": {
+      "source": "./contracts/lib/BarterYardPackNFT.cdc",
+      "aliases": {
+        "emulator": "f8d6e0586b0a20c7",
+        "testnet": "eb6f76348b7252b8",
+        "mainnet": "a95b021cf8a30d80"
+      }
+    },
+    "NFTAirDrop": {
+      "source": "./contracts/lib/NFTAirDrop.cdc",
+      "aliases": {
+        "emulator": "f8d6e0586b0a20c7",
+        "testnet": "eb6f76348b7252b8",
+        "mainnet": "a95b021cf8a30d80"
+      }
+    },
+    "FLOAT": {
+      "source": "./contracts/FLOAT.cdc",
+      "aliases": {
+        "emulator": "0x2d4c3caffbeab845",
+        "testnet": "0x2d4c3caffbeab845",
+        "mainnet": "0x2d4c3caffbeab845"
+      }
+    },
+    "BarterYardClubWerewolf": {
+      "source": "./contracts/BarterYardClubWerewolf.cdc",
+      "aliases": {
+        "emulator": "f8d6e0586b0a20c7",
+        "testnet": "195caada038c5806",
+        "mainnet": "28abb9f291cadaf2"
+      }
+    },
+    "BarterYardClubWerewolfSale": {
+      "source": "./contracts/BarterYardClubWerewolfSale.cdc",
+      "aliases": {
+        "emulator": "f8d6e0586b0a20c7",
+        "testnet": "195caada038c5806",
+        "mainnet": "28abb9f291cadaf2"
+      }
+    },
+    "BYC": {
+      "source": "../contracts/BYC.cdc",
+      "aliases": {
+        "mainnet": "0xb18b1dc5069a41c7",
+        "emulator": "f8d6e0586b0a20c7",
+        "testnet": "0x6cc20ec6609bad7f"
+      }
+    }
+  }
+}
