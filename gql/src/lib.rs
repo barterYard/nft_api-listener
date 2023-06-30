@@ -17,6 +17,7 @@ use get_contract::getContract;
 use get_created_contract::getCreatedContracts;
 use get_deposit::getDepositEvent;
 use get_transact::nftTransfer;
+use log::error;
 
 const FLOWGRAPH_URL: &str =
     "https://query.flowgraph.co/?token=5a477c43abe4ded25f1e8cc778a34911134e0590";
@@ -238,15 +239,21 @@ pub async fn find_all_transactions(
         }
         from_owner.remove_owned_nft(nft._id, db_client).await;
         to_owner.add_owned_nft(nft._id, db_client).await;
-        Transfert::create(
+        match Transfert::create(
             tra.transaction.time,
             from.clone(),
             to.clone(),
             nft._id,
             db_client,
         )
-        .await;
-        println!("transfert of {} from {} to {} done", nft._id, from, to)
+        .await
+        {
+            Ok(_x) => {}
+            Err(e) => {
+                error!("{:?}", e);
+            }
+        };
+        // println!("transfert of {} from {} to {} done", nft._id, from, to)
         // transfer
     }
     if events.page_info.has_next_page {
