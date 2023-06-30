@@ -11,8 +11,8 @@ COPY ./rust_byc_helper/src ./rust_byc_helper/src
 COPY ./rust_byc_helper/Cargo.toml ./rust_byc_helper/Cargo.toml
 RUN cargo build -r -q
 
-FROM debian:stable-slim
-RUN apt-get update && apt-get install -y ca-certificates && apt-get install -y libssl1.1
+FROM debian:oldstable-slim
+RUN apt-get update && apt-get install -y ca-certificates
 RUN update-ca-certificates
 COPY --from=base /app/target/release/listener .
 
