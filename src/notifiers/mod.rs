@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 
-pub mod discord;
 mod notifier;
 pub mod webhook;
 

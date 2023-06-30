@@ -1,0 +1,26 @@
+query get_created_contracts($after: ID) {
+  events(
+    typeId: "flow.AccountContractAdded"
+    ordering: Descending
+    after: $after
+    first: 100
+  ) {
+    edges {
+      cursor
+      node {
+        fields
+        type {
+          contract {
+            type
+          }
+          id
+          name
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

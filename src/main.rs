@@ -1,64 +1,65 @@
 mod cadence;
 mod events;
 mod listeners;
+mod notifiers;
 
 use std::env;
 
-use crate::{
-    events::{ListingEvent, TopShotEvent},
-    listeners::{flow_listener::FlowNetwork, Requestable},
-};
+use crate::listeners::{flow_listener::FlowNetwork, Requestable};
 
+use byc_helpers::mongo::{
+    self,
+    models::{common::ModelCollection, Contract},
+};
+use futures::TryStreamExt;
 use listeners::flow_listener::FlowListener;
 use log::info;
 
 #[tokio::main]
 async fn main() {
     byc_helpers::logger::init_logger();
+    // let args: Vec<String> = env::args().collect();
+    let m_client = mongo::client::create().await;
+    // if args.len() > 1 && args[1] == "feed" {
+    // feed db
 
-    // create notifiers events
-    let mut webhooks = vec![];
-    if env::var("BARTER_LISTENER").is_ok() {
-        webhooks = vec![
-            WebhookClient {
-                mainnet_event: "A.b18b1dc5069a41c7.BYC.BarterCreated",
-                testnet_event: "A.6cc20ec6609bad7f.BYC.BarterCreated",
-                testnet_endpoint: "https://staging-service.barteryard.club/barters/created",
-                mainnet_endpoint: "https://service.barteryard.club/barters/created",
-            },
-            WebhookClient {
-                mainnet_event: "A.b18b1dc5069a41c7.BYC.BarterDestroyed",
-                testnet_event: "A.6cc20ec6609bad7f.BYC.BarterDestroyed",
-                testnet_endpoint: "https://staging-service.barteryard.club/barters/destroyed",
-                mainnet_endpoint: "https://service.barteryard.club/barters/destroyed",
-            },
-            WebhookClient {
-                mainnet_event: "A.b18b1dc5069a41c7.BYC.BarterExecuted",
-                testnet_event: "A.6cc20ec6609bad7f.BYC.BarterExecuted",
-                testnet_endpoint: "https://staging-service.barteryard.club/barters/executed",
-                mainnet_endpoint: "https://service.barteryard.club/barters/executed",
-            },
-        ];
+    let mut db_contract: Vec<String> = vec![];
+    let contracts_col = Contract::get_collection(&m_client);
+    let cursor = contracts_col.find(None, None).await.unwrap();
+    let c_vec: Vec<Contract> = cursor.try_collect().await.unwrap();
+
+    for c in c_vec.into_iter() {
+        let mut s2 = Some("".to_string());
+        println!("{}", c.id.clone());
+        db_contract.push(c.id.clone());
+        while s2.is_some() {
+            s2 = gql::find_all_transactions(c.clone(), c.id.clone(), s2, &m_client).await;
+            println!("{:?}", s2);
+        }
     }
+    // return;
+    // let mut s = Some("".to_string());
+    // while s.is_some() {
+    //     s = gql::find_created_events(s, &m_client, &mut db_contract).await;
+    //     println!("{:?}", s)
+    // }
+    // return;
+    // }
+    // let events: &mut Vec<&str> = &mut vec!["flow.AccountContractAdded"];
 
-    let events: &mut Vec<&str> = &mut vec![];
-    let network = FlowNetwork::get();
-    info!("server started on flow {:?}", network);
-    if network == FlowNetwork::Mainnet && env::var("BARTER_LISTENER").is_err() {
-        events.append(&mut ListingEvent::get_event_types());
-        events.append(&mut TopShotEvent::get_event_types());
-    }
+    // let network = FlowNetwork::get();
+    // info!("server started on flow {:?}", network);
 
-    // create and run server
-    FlowListener::create(
-        notifiers::Notifier {
-            discord: Some(&BycDiscordClient {}),
-            webhooks: Some(&webhooks),
-        },
-        events,
-    )
-    .await
-    .unwrap()
-    .start()
-    .await;
+    // // create and run server
+    // FlowListener::create(
+    //     notifiers::Notifier {
+    //         webhooks: Some(&vec![]),
+    //         database: Some(&m_client),
+    //     },
+    //     events,
+    // )
+    // .await
+    // .unwrap()
+    // .start()
+    // .await;
 }

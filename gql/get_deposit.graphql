@@ -1,0 +1,14 @@
+query get_deposit_event($typeId: String, $after: ID) {
+  events(typeId: $typeId, first: 10, after: $after, ordering: Ascending) {
+    edges {
+      cursor
+      node {
+        fields
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

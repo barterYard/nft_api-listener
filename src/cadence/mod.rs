@@ -1,7 +1,6 @@
 pub mod models;
 use crate::listeners::flow_listener::FlowNetwork;
 
-pub const GET_BATCH_NFT: &str = include_str!("get_batch_nft.cdc");
 pub const GET_STOREFRONT_LISTING: &str = include_str!("get_storefront_listings.cdc");
 pub const FLOW_CONFIG: &str = include_str!("flow.json");
 

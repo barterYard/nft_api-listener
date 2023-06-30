@@ -6,6 +6,9 @@ use std::time;
 use tokio::sync::mpsc;
 use tokio::time::sleep;
 
+use crate::events;
+use crate::listeners::Requestable;
+
 #[derive(Debug)]
 struct EventListenerError {
     message: &'static str,
@@ -33,8 +36,13 @@ pub struct EventListener {
 impl EventListener {
     pub async fn set_listener_events(&mut self, sender: &mut mpsc::Sender<(&str, Vec<Event>)>) {
         info!("bc listener started for events {:?}", self.events);
-
         loop {
+            self.events
+                .append(&mut events::DepositEvent::get_event_types());
+            self.events
+                .append(&mut events::WithdrawEvent::get_event_types());
+            self.events.sort();
+            self.events.dedup();
             let mut latest_block = match self.client.latest_block_header(Seal::Sealed).await {
                 Ok(block) => {
                     if self.last_requested_block > block.height {
@@ -69,6 +77,7 @@ impl EventListener {
                     }
                 };
                 if event_list.is_empty() {
+                    info!("{:?}", event_type);
                     continue;
                 }
 
