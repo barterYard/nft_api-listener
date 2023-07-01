@@ -200,7 +200,7 @@ pub async fn find_all_transactions(
         c = None;
     }
     let variables = get_transact::nft_transfer::Variables {
-        after: c,
+        after: c.clone(),
         contract_id: Some(contract_id),
     };
     let query = nftTransfer::build_query(variables);
@@ -208,12 +208,13 @@ pub async fn find_all_transactions(
         .timeout(Duration::from_secs(4))
         .build()
         .unwrap();
-    let res = client
-        .post(FLOWGRAPH_URL)
-        .json(&query)
-        .send()
-        .await
-        .unwrap();
+    let res = match client.post(FLOWGRAPH_URL).json(&query).send().await {
+        Ok(x) => x,
+        Err(e) => {
+            println!("{:?}", e);
+            return c;
+        }
+    };
     let response_body: Response<<nftTransfer as GraphQLQuery>::ResponseData> =
         res.json().await.unwrap();
     let events = response_body.data.unwrap().nft_transfers;

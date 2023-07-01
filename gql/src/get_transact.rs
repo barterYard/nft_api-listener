@@ -4,7 +4,7 @@ pub mod nft_transfer {
     #![allow(dead_code)]
     use std::result::Result;
     pub const OPERATION_NAME: &str = "nftTransfer";
-    pub const QUERY : & str = "query nftTransfer($contractId: ID, $after: ID) {\n  nftTransfers(\n    contractId: $contractId\n    after: $after\n    ordering: Ascending\n    first: 50\n  ) {\n    edges {\n      node {\n        transaction {\n          time\n        }\n        nft {\n          nftId\n        }\n        from {\n          address\n        }\n        to {\n          address\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n" ;
+    pub const QUERY : & str = "query nftTransfer($contractId: ID, $after: ID) {\n  nftTransfers(\n    contractId: $contractId\n    after: $after\n    ordering: Descending\n    first: 50\n  ) {\n    edges {\n      node {\n        transaction {\n          time\n        }\n        nft {\n          nftId\n        }\n        from {\n          address\n        }\n        to {\n          address\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n" ;
     use super::*;
     use serde::{Deserialize, Serialize};
     #[allow(dead_code)]
