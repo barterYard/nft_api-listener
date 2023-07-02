@@ -221,7 +221,10 @@ pub async fn find_all_transactions(
             _ => return c,
         };
 
-    let events = response_body.data.unwrap().nft_transfers;
+    let events = match response_body.data {
+        Some(x) => x.nft_transfers,
+        _ => return c,
+    };
     for event in events.edges {
         let tra = event.node.unwrap();
         let from = match tra.from {
