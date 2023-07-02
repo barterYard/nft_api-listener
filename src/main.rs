@@ -9,7 +9,8 @@ use crate::listeners::{flow_listener::FlowNetwork, Requestable};
 
 use byc_helpers::mongo::{
     self,
-    models::{common::ModelCollection, Contract},
+    models::{common::ModelCollection, mongo_doc, Contract, GenNft, Owner, Transfert},
+    mongodb::{options::IndexOptions, IndexModel},
 };
 use futures::TryStreamExt;
 use listeners::flow_listener::FlowListener;
@@ -28,13 +29,44 @@ async fn main() {
     let cursor = contracts_col.find(None, None).await.unwrap();
     let c_vec: Vec<Contract> = cursor.try_collect().await.unwrap();
 
+    let nft_col = GenNft::get_collection(&m_client);
+    nft_col.drop(None).await;
+    let tra_col = Transfert::get_collection(&m_client);
+    tra_col.drop(None).await;
+    tra_col
+        .create_index(
+            IndexModel::builder()
+                .keys(mongo_doc! {
+                    "date": 1,
+                    "nft": 1,
+                    "from": 1,
+                    "to": 1
+                })
+                .options(IndexOptions::builder().unique(true).build())
+                .build(),
+            None,
+        )
+        .await;
+    let owners_col = Owner::get_collection(&m_client);
+    owners_col.drop(None).await;
+    owners_col
+        .create_index(
+            IndexModel::builder()
+                .keys(mongo_doc! {
+                    "address": 1,
+                })
+                .options(IndexOptions::builder().unique(true).build())
+                .build(),
+            None,
+        )
+        .await;
+
     for c in c_vec.into_iter() {
         let mut s2 = Some("".to_string());
         println!("{}", c.id.clone());
         db_contract.push(c.id.clone());
         while s2.is_some() {
             s2 = gql::find_all_transactions(c.clone(), c.id.clone(), s2, &m_client).await;
-            println!("{:?}", s2);
         }
     }
     // return;
