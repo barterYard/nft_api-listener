@@ -216,7 +216,11 @@ pub async fn find_all_transactions(
         }
     };
     let response_body: Response<<nftTransfer as GraphQLQuery>::ResponseData> =
-        res.json().await.unwrap();
+        match res.json().await {
+            Ok(x) => x,
+            _ => return c,
+        };
+
     let events = response_body.data.unwrap().nft_transfers;
     for event in events.edges {
         let tra = event.node.unwrap();
