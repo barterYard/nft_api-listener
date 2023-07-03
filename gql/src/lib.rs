@@ -3,7 +3,10 @@ use std::fmt;
 use std::time::Duration;
 
 use byc_helpers::mongo::{
-    models::{common::ModelCollection, Contract, DateTime, Deployment, GenNft, Owner, Transfert},
+    models::{
+        common::ModelCollection, mongo_doc, Contract, DateTime, Deployment, GenNft, Owner,
+        Transfert,
+    },
     mongodb::{bson, Client},
 };
 use graphql_client::{GraphQLQuery, Response};
@@ -18,6 +21,7 @@ use get_created_contract::getCreatedContracts;
 use get_deposit::getDepositEvent;
 use get_transact::nftTransfer;
 use log::error;
+use tokio::time::{self, sleep};
 
 const FLOWGRAPH_URL: &str =
     "https://query.flowgraph.co/?token=5a477c43abe4ded25f1e8cc778a34911134e0590";
@@ -38,15 +42,12 @@ impl Error for GqlError {
         self.message.as_str()
     }
 }
-pub async fn find_contract(contract_id: String, db_client: &Client) {
+pub async fn find_contract(contract_id: String, db_client: &Client, client: &reqwest::Client) {
     let variables = crate::get_contract::get_contract::Variables {
         id: contract_id.clone(),
     };
     let query = getContract::build_query(variables);
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(4))
-        .build()
-        .unwrap();
+
     let res = match client.post(FLOWGRAPH_URL).json(&query).send().await {
         Ok(x) => x,
         _ => return,
@@ -71,22 +72,37 @@ pub async fn find_contract(contract_id: String, db_client: &Client) {
             //save to db
             let db_ctr = Contract {
                 _id: bson::oid::ObjectId::new(),
-                address: contract.address,
-                id: contract.id,
+                address: contract.address.clone(),
+                id: contract.id.clone(),
                 locked: contract.locked,
                 deleted: contract.deleted,
-                identifier: contract.identifier,
+                identifier: contract.identifier.clone(),
                 contract_type: format!("{:?}", contract.type_),
                 deployments: deps,
             };
 
             let contract_col = Contract::get_collection(db_client);
-            let res = contract_col.insert_one(db_ctr, None).await;
-            if res.is_err() {
-                println!("{}", res.unwrap_err());
-            } else {
-                println!("contract {} added!!", contract_id);
-            }
+            match contract_col
+                .find_one(
+                    mongo_doc! {
+                        "id": contract.id
+                    },
+                    None,
+                )
+                .await
+            {
+                Ok(Some(_)) => {
+                    println!("contract {} already exist!!", contract_id);
+                }
+                _ => {
+                    let res = contract_col.insert_one(db_ctr, None).await;
+                    if res.is_err() {
+                        println!("{}", res.unwrap_err());
+                    } else {
+                        println!("contract {} added!!", contract_id);
+                    }
+                }
+            };
         }
 
         _ => {}
@@ -97,8 +113,9 @@ pub async fn find_created_events(
     after: Option<String>,
     db_client: &Client,
     db_contract: &mut Vec<String>,
+    client: &reqwest::Client,
 ) -> Option<String> {
-    let mut c = after;
+    let mut c = after.clone();
     if c.clone().unwrap_or("".to_string()) == "" {
         c = None;
     }
@@ -106,22 +123,22 @@ pub async fn find_created_events(
     let variables = get_created_contract::get_created_contracts::Variables { after: c.clone() };
 
     let query = getCreatedContracts::build_query(variables);
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(4))
-        .build()
-        .unwrap();
 
     let res = match client.post(FLOWGRAPH_URL).json(&query).send().await {
         Ok(x) => x,
         Err(e) => {
             println!("{:?}", e);
-            return c;
+            return after;
         }
     };
     let response_body: Response<<getCreatedContracts as GraphQLQuery>::ResponseData> =
-        res.json().await.unwrap();
+        match res.json().await {
+            Ok(x) => x,
+            Err(_) => return after,
+        };
 
     let contract_events = response_body.data.unwrap().events.unwrap();
+    println!("events lenght {}", contract_events.edges.len());
     for edge in contract_events.edges {
         let node = edge.clone().node.unwrap().clone();
 
@@ -135,9 +152,10 @@ pub async fn find_created_events(
             .clone()
             .unwrap();
         let contract_id = format!("A.{}.{}", address.replace("0x", ""), name);
+
         if !db_contract.contains(&&contract_id.to_string()) {
             db_contract.push(contract_id.clone());
-            find_contract(contract_id, db_client).await;
+            find_contract(contract_id, db_client, client).await;
         }
     }
     if contract_events.page_info.has_next_page {
@@ -194,6 +212,7 @@ pub async fn find_all_transactions(
     contract_id: String,
     after: Option<String>,
     db_client: &Client,
+    client: &reqwest::Client,
 ) -> Option<String> {
     let mut c = after;
     if c.clone().unwrap_or("".to_string()) == "" {
@@ -201,17 +220,14 @@ pub async fn find_all_transactions(
     }
     let variables = get_transact::nft_transfer::Variables {
         after: c.clone(),
-        contract_id: Some(contract_id),
+        contract_id: Some(contract_id.clone()),
     };
     let query = nftTransfer::build_query(variables);
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(4))
-        .build()
-        .unwrap();
+
     let res = match client.post(FLOWGRAPH_URL).json(&query).send().await {
         Ok(x) => x,
-        Err(e) => {
-            println!("{:?}", e);
+        Err(_) => {
+            sleep(time::Duration::from_millis(500)).await;
             return c;
         }
     };
@@ -236,7 +252,6 @@ pub async fn find_all_transactions(
             _ => "0x0".to_string(),
         };
         let nft = GenNft::get_or_create(db_client, contract._id, tra.nft.nft_id.clone()).await;
-
         let mut from_owner = Owner::get_or_create(db_client, from.clone()).await;
         let mut to_owner = Owner::get_or_create(db_client, to.clone()).await;
         if to == "0x0" && !nft.burned {
@@ -245,24 +260,20 @@ pub async fn find_all_transactions(
         if from == "0x0" && nft.burned {
             nft.mint(db_client).await;
         }
-        from_owner.remove_owned_nft(nft._id, db_client).await;
-        to_owner.add_owned_nft(nft._id, db_client).await;
-        match Transfert::create(
+        from_owner
+            .remove_owned_nft(contract_id.clone(), nft._id, db_client)
+            .await;
+        to_owner
+            .add_owned_nft(nft._id, contract_id.clone(), db_client)
+            .await;
+        let _ = Transfert::get_or_create(
             tra.transaction.time,
             from.clone(),
             to.clone(),
             nft._id,
             db_client,
         )
-        .await
-        {
-            Ok(_x) => {}
-            Err(e) => {
-                error!("{:?}", e);
-            }
-        };
-        // println!("transfert of {} from {} to {} done", nft._id, from, to)
-        // transfer
+        .await;
     }
     if events.page_info.has_next_page {
         Some(events.page_info.end_cursor)

@@ -4,7 +4,7 @@ pub mod get_created_contracts {
     #![allow(dead_code)]
     use std::result::Result;
     pub const OPERATION_NAME: &str = "get_created_contracts";
-    pub const QUERY : & str = "query get_created_contracts($after: ID) {\n  events(\n    typeId: \"flow.AccountContractAdded\"\n    ordering: Descending\n    after: $after\n    first: 100\n  ) {\n    edges {\n      cursor\n      node {\n        fields\n        type {\n          contract {\n            type\n          }\n          id\n          name\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n" ;
+    pub const QUERY : & str = "query get_created_contracts($after: ID) {\n  events(\n    typeId: \"flow.AccountContractUpdated\"\n    ordering: Descending\n    after: $after\n    first: 50\n  ) {\n    edges {\n      cursor\n      node {\n        fields\n        type {\n          contract {\n            type\n          }\n          id\n          name\n        }\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}\n" ;
     use super::*;
     use byc_helpers::mongo::mongodb::bson::Document;
     use serde::{Deserialize, Serialize};

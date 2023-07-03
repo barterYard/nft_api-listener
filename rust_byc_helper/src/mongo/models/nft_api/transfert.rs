@@ -1,4 +1,4 @@
-use crate::mongo::models::common::ModelCollection;
+use crate::mongo::models::{common::ModelCollection, mongo_doc};
 use bson::oid::ObjectId;
 use mongodb::{error::Error, results::InsertOneResult, Client};
 use proc::ModelCollection;
@@ -23,6 +23,7 @@ impl Transfert {
             nft,
         }
     }
+
     pub async fn create(
         date: String,
         from: String,
@@ -40,6 +41,43 @@ impl Transfert {
         Transfert::get_collection(client)
             .insert_one(transfer, None)
             .await
+    }
+
+    pub async fn get_or_create(
+        date: String,
+        from: String,
+        to: String,
+        nft: ObjectId,
+        client: &Client,
+    ) -> Option<Transfert> {
+        let transfer_col = Transfert::get_collection(client);
+        match transfer_col
+            .find_one(
+                mongo_doc! {
+                    "date": date.clone(),
+                    "from": from.clone(),
+                    "to": to.clone(),
+                    "nft": nft.clone()
+                },
+                None,
+            )
+            .await
+        {
+            Ok(c) => c,
+            _ => {
+                let transfer = Transfert {
+                    _id: ObjectId::new(),
+                    date,
+                    from,
+                    to,
+                    nft,
+                };
+                Transfert::get_collection(client)
+                    .insert_one(transfer.clone(), None)
+                    .await;
+                Some(transfer)
+            }
+        }
     }
 
     pub async fn save(&self, client: &Client) -> Result<InsertOneResult, Error> {

@@ -3,13 +3,13 @@ mod events;
 mod listeners;
 mod notifiers;
 
-use std::env;
+use std::{env, time::Duration};
 
 use crate::listeners::{flow_listener::FlowNetwork, Requestable};
 
 use byc_helpers::mongo::{
     self,
-    models::{common::ModelCollection, mongo_doc, Contract, GenNft, Owner, Transfert},
+    models::{common::ModelCollection, create_nft_api_db, Contract},
     mongodb::{options::IndexOptions, IndexModel},
 };
 use futures::TryStreamExt;
@@ -19,64 +19,42 @@ use log::info;
 #[tokio::main]
 async fn main() {
     byc_helpers::logger::init_logger();
-    // let args: Vec<String> = env::args().collect();
+    let args: Vec<String> = env::args().collect();
     let m_client = mongo::client::create().await;
-    // if args.len() > 1 && args[1] == "feed" {
-    // feed db
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(4))
+        .build()
+        .unwrap();
 
-    let mut db_contract: Vec<String> = vec![];
+    // clear db
+    create_nft_api_db(&m_client).await;
+
     let contracts_col = Contract::get_collection(&m_client);
     let cursor = contracts_col.find(None, None).await.unwrap();
     let c_vec: Vec<Contract> = cursor.try_collect().await.unwrap();
+    let mut db_contract: Vec<String> = c_vec.clone().into_iter().map(|x| x.id).collect();
 
-    let nft_col = GenNft::get_collection(&m_client);
-    nft_col.drop(None).await;
-    let tra_col = Transfert::get_collection(&m_client);
-    tra_col.drop(None).await;
-    tra_col
-        .create_index(
-            IndexModel::builder()
-                .keys(mongo_doc! {
-                    "date": 1,
-                    "nft": 1,
-                    "from": 1,
-                    "to": 1
-                })
-                .options(IndexOptions::builder().unique(true).build())
-                .build(),
-            None,
-        )
-        .await;
-    let owners_col = Owner::get_collection(&m_client);
-    owners_col.drop(None).await;
-    owners_col
-        .create_index(
-            IndexModel::builder()
-                .keys(mongo_doc! {
-                    "address": 1,
-                })
-                .options(IndexOptions::builder().unique(true).build())
-                .build(),
-            None,
-        )
-        .await;
+    let mut s = Some("".to_string());
 
+    while s.is_some() {
+        s = gql::find_created_events(s, &m_client, &mut db_contract, &client).await;
+    }
+    let mut contract_done = 0;
     for c in c_vec.into_iter() {
         let mut s2 = Some("".to_string());
-        println!("{}", c.id.clone());
-        db_contract.push(c.id.clone());
+
         while s2.is_some() {
-            s2 = gql::find_all_transactions(c.clone(), c.id.clone(), s2, &m_client).await;
+            s2 = gql::find_all_transactions(c.clone(), c.id.clone(), s2, &m_client, &client).await;
         }
+        contract_done += 1;
+        info!(
+            "contract {} done {}/{}",
+            c.identifier,
+            contract_done,
+            db_contract.len()
+        );
     }
-    // return;
-    // let mut s = Some("".to_string());
-    // while s.is_some() {
-    //     s = gql::find_created_events(s, &m_client, &mut db_contract).await;
-    //     println!("{:?}", s)
-    // }
-    // return;
-    // }
+
     // let events: &mut Vec<&str> = &mut vec!["flow.AccountContractAdded"];
 
     // let network = FlowNetwork::get();
