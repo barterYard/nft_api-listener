@@ -4,6 +4,8 @@ use mongodb::{error::Error, results::UpdateResult, Client};
 use proc::ModelCollection;
 use serde::{Deserialize, Serialize};
 
+use super::contract::Contract;
+
 #[derive(Serialize, Deserialize, Debug, Default, Clone, ModelCollection)]
 pub struct Nft {
     pub _id: ObjectId,
@@ -11,15 +13,16 @@ pub struct Nft {
     pub description: Option<String>,
     pub name: Option<String>,
     pub burned: bool,
+    pub contract_id: String,
     pub contract: ObjectId,
 }
 
 impl Nft {
-    pub async fn get_or_create(client: &Client, contract_id: ObjectId, nft_id: String) -> Nft {
+    pub async fn get_or_create(client: &Client, contract: &Contract, nft_id: String) -> Nft {
         let nft_col = Nft::get_collection(client);
         match nft_col
             .find_one(
-                mongo_doc! {"contract": contract_id, "id": nft_id.clone(), "burned": false},
+                mongo_doc! {"contract": contract._id, "id": nft_id.clone(), "burned": false},
                 None,
             )
             .await
@@ -28,7 +31,8 @@ impl Nft {
                 Some(nft) => return nft,
                 _ => {
                     let new_nft = Nft {
-                        contract: contract_id,
+                        contract: contract._id,
+                        contract_id: contract.id.clone(),
                         id: nft_id,
                         _id: bson::oid::ObjectId::new(),
                         ..Default::default()
@@ -39,7 +43,8 @@ impl Nft {
             },
             Err(_) => {
                 let new_nft = Nft {
-                    contract: contract_id,
+                    contract: contract._id,
+                    contract_id: contract.id.clone(),
                     id: nft_id,
                     _id: bson::oid::ObjectId::new(),
                     ..Default::default()

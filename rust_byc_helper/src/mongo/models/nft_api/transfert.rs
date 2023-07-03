@@ -63,7 +63,7 @@ impl Transfert {
             )
             .await
         {
-            Ok(c) => c,
+            Ok(Some(c)) => Some(c),
             _ => {
                 let transfer = Transfert {
                     _id: ObjectId::new(),
