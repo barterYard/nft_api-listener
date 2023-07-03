@@ -32,6 +32,7 @@ async fn main() {
         let _ = File::create("already_run");
         create_nft_api_db(&m_client).await;
     } else {
+        println!("crashed");
         return;
     }
 

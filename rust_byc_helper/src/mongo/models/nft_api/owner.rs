@@ -119,15 +119,22 @@ impl Owner {
             let mut nfts = HashMap::new();
             nfts.insert(contract_id.clone(), vec![nft]);
             self.nfts = Some(nfts)
-        }
-        let new_nfts = self.nfts.clone().unwrap();
-        let mut doc = new_nfts.get(&contract_id).unwrap().clone();
+        } else {
+            match self.nfts.as_ref().unwrap().get(&contract_id) {
+                Some(_x) => {
+                    let new_nfts = self.nfts.clone().unwrap();
+                    let mut doc = new_nfts.get(&contract_id).unwrap().clone();
 
-        doc = doc
-            .into_iter()
-            .filter(|x| x.to_string() != nft.to_string())
-            .collect();
-        self.nfts.as_mut().unwrap().insert(contract_id.clone(), doc);
+                    doc = doc
+                        .into_iter()
+                        .filter(|x| x.to_string() != nft.to_string())
+                        .collect();
+                    self.nfts.as_mut().unwrap().insert(contract_id.clone(), doc);
+                }
+                _ => {}
+            };
+        }
+
         self.update(client).await
     }
 }
