@@ -3,7 +3,7 @@ mod events;
 mod listeners;
 mod notifiers;
 
-use std::{env, time::Duration};
+use std::{env, fs::File, time::Duration};
 
 use crate::listeners::{flow_listener::FlowNetwork, Requestable};
 
@@ -27,7 +27,13 @@ async fn main() {
         .unwrap();
 
     // clear db
-    create_nft_api_db(&m_client).await;
+    if let Err(f) = File::open("already_run") {
+        println!("{}", f);
+        let _ = File::create("already_run");
+        create_nft_api_db(&m_client).await;
+    } else {
+        return;
+    }
 
     let contracts_col = Contract::get_collection(&m_client);
     let cursor = contracts_col.find(None, None).await.unwrap();
@@ -43,6 +49,7 @@ async fn main() {
     for c in c_vec.into_iter() {
         let mut s2 = Some("".to_string());
 
+        println!("start {} ", c.identifier);
         while s2.is_some() {
             s2 = gql::find_all_transactions(c.clone(), c.id.clone(), s2, &m_client, &client).await;
         }

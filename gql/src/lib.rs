@@ -251,7 +251,7 @@ pub async fn find_all_transactions(
             Some(x) => x.address,
             _ => "0x0".to_string(),
         };
-        let nft = GenNft::get_or_create(db_client, contract._id, tra.nft.nft_id.clone()).await;
+        let nft = GenNft::get_or_create(db_client, &contract, tra.nft.nft_id.clone()).await;
         let mut from_owner = Owner::get_or_create(db_client, from.clone()).await;
         let mut to_owner = Owner::get_or_create(db_client, to.clone()).await;
         if to == "0x0" && !nft.burned {
@@ -266,6 +266,7 @@ pub async fn find_all_transactions(
         to_owner
             .add_owned_nft(nft._id, contract_id.clone(), db_client)
             .await;
+
         let _ = Transfert::get_or_create(
             tra.transaction.time,
             from.clone(),
