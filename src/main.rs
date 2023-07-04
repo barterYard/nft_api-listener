@@ -19,7 +19,7 @@ use log::info;
 #[tokio::main]
 async fn main() {
     byc_helpers::logger::init_logger();
-    let args: Vec<String> = env::args().collect();
+
     let m_client = mongo::client::create().await;
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(4))
@@ -39,15 +39,16 @@ async fn main() {
     let contracts_col = Contract::get_collection(&m_client);
     let cursor = contracts_col.find(None, None).await.unwrap();
     let c_vec: Vec<Contract> = cursor.try_collect().await.unwrap();
-    let mut db_contract: Vec<String> = c_vec.clone().into_iter().map(|x| x.id).collect();
+    // let db_contract: Vec<String> = c_vec.clone().into_iter().map(|x| x.id).collect();
 
-    let mut s = Some("".to_string());
+    // let mut s = Some("".to_string());
 
-    while s.is_some() {
-        s = gql::find_created_events(s, &m_client, &mut db_contract, &client).await;
-    }
+    // while s.is_some() {
+    //     s = gql::find_created_events(s, &m_client, &mut db_contract, &client).await;
+    // }
 
     let mut contract_done = 0;
+    // c_vec.reverse();
     for c in c_vec.clone().into_iter() {
         // if c.id == "A.28abb9f291cadaf2.BarterYardClubWerewolf" {
         let mut s2 = Some("".to_string());

@@ -52,7 +52,7 @@ impl Transfert {
         client: &Client,
     ) -> Option<(Transfert, bool)> {
         let transfer_col = Transfert::get_collection(client);
-        println!("{:?}", nft.clone());
+
         match transfer_col
             .find_one(
                 mongo_doc! {
