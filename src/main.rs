@@ -27,14 +27,14 @@ async fn main() {
         .unwrap();
 
     // clear db
-    if let Err(f) = File::open("already_run") {
-        println!("{}", f);
-        let _ = File::create("already_run");
-        create_nft_api_db(&m_client).await;
-    } else {
-        println!("crashed");
-        return;
-    }
+    // if let Err(f) = File::open("already_run") {
+    //     println!("{}", f);
+    //     let _ = File::create("already_run");
+    //     create_nft_api_db(&m_client).await;
+    // } else {
+    //     println!("crashed");
+    //     // return;
+    // }
 
     let contracts_col = Contract::get_collection(&m_client);
     let cursor = contracts_col.find(None, None).await.unwrap();
@@ -46,11 +46,13 @@ async fn main() {
     while s.is_some() {
         s = gql::find_created_events(s, &m_client, &mut db_contract, &client).await;
     }
+
     let mut contract_done = 0;
-    for c in c_vec.into_iter() {
+    for c in c_vec.clone().into_iter() {
+        // if c.id == "A.28abb9f291cadaf2.BarterYardClubWerewolf" {
         let mut s2 = Some("".to_string());
 
-        println!("start {} ", c.identifier);
+        info!("start {} ", c.identifier);
         while s2.is_some() {
             s2 = gql::find_all_transactions(c.clone(), c.id.clone(), s2, &m_client, &client).await;
         }
@@ -59,8 +61,9 @@ async fn main() {
             "contract {} done {}/{}",
             c.identifier,
             contract_done,
-            db_contract.len()
+            c_vec.len()
         );
+        // }
     }
 
     // let events: &mut Vec<&str> = &mut vec!["flow.AccountContractAdded"];

@@ -2,6 +2,7 @@ use std::{any::Any, fmt::Display};
 
 use async_trait::async_trait;
 use flow_sdk::{entities::Event, prelude::cadence_json::CompositeOwned};
+use log::error;
 
 use crate::notifiers::Notifier;
 
@@ -30,7 +31,7 @@ where
                 let parsed_event = parsed.ok().unwrap();
                 result.push(Self::from_cadence(&parsed_event));
             } else {
-                println!("{:?}", parsed.err());
+                error!("{:?}", parsed.err());
             }
         }
         result

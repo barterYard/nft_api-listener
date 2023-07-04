@@ -51,6 +51,36 @@ pub async fn create_schema(m_client: &Client) -> Result<(), Box<dyn Error>> {
             None,
         )
         .await?;
+    tra_col
+        .create_index(
+            IndexModel::builder()
+                .keys(mongo_doc! {
+                    "nft": 1,
+                })
+                .build(),
+            None,
+        )
+        .await?;
+    tra_col
+        .create_index(
+            IndexModel::builder()
+                .keys(mongo_doc! {
+                    "from": 1,
+                })
+                .build(),
+            None,
+        )
+        .await?;
+    tra_col
+        .create_index(
+            IndexModel::builder()
+                .keys(mongo_doc! {
+                    "to": 1,
+                })
+                .build(),
+            None,
+        )
+        .await?;
     let owners_col = Owner::get_collection(m_client);
     owners_col.drop(None).await?;
     owners_col

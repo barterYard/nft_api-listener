@@ -1,5 +1,6 @@
 use crate::mongo::models::{common::ModelCollection, mongo_doc};
 use bson::oid::ObjectId;
+use log::info;
 use mongodb::{error::Error, results::InsertOneResult, Client};
 use proc::ModelCollection;
 use serde::{Deserialize, Serialize};
@@ -49,8 +50,9 @@ impl Transfert {
         to: String,
         nft: ObjectId,
         client: &Client,
-    ) -> Option<Transfert> {
+    ) -> Option<(Transfert, bool)> {
         let transfer_col = Transfert::get_collection(client);
+        println!("{:?}", nft.clone());
         match transfer_col
             .find_one(
                 mongo_doc! {
@@ -63,7 +65,7 @@ impl Transfert {
             )
             .await
         {
-            Ok(Some(c)) => Some(c),
+            Ok(Some(c)) => Some((c, false)),
             _ => {
                 let transfer = Transfert {
                     _id: ObjectId::new(),
@@ -75,7 +77,8 @@ impl Transfert {
                 Transfert::get_collection(client)
                     .insert_one(transfer.clone(), None)
                     .await;
-                Some(transfer)
+
+                Some((transfer, true))
             }
         }
     }

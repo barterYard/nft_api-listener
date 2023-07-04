@@ -18,7 +18,28 @@ pub struct Nft {
 }
 
 impl Nft {
-    pub async fn get_or_create(client: &Client, contract: &Contract, nft_id: String) -> Nft {
+    pub async fn insert(&self, client: &Client) {
+        let nft_col = Nft::get_collection(client);
+        match nft_col
+            .find_one(
+                mongo_doc! {"contract": self.contract, "id": self.id.clone()},
+                None,
+            )
+            .await
+        {
+            Ok(Some(x)) => {}
+            _ => {
+                let _ = nft_col.insert_one(self, None).await;
+            }
+        }
+    }
+
+    pub async fn get_or_create(
+        client: &Client,
+        contract: &Contract,
+        nft_id: String,
+        save: bool,
+    ) -> Nft {
         let nft_col = Nft::get_collection(client);
         match nft_col
             .find_one(
@@ -37,7 +58,9 @@ impl Nft {
                         _id: bson::oid::ObjectId::new(),
                         ..Default::default()
                     };
-                    let _ = nft_col.insert_one(&new_nft, None).await;
+                    if save {
+                        let _ = nft_col.insert_one(&new_nft, None).await;
+                    }
                     new_nft
                 }
             },
@@ -49,11 +72,14 @@ impl Nft {
                     _id: bson::oid::ObjectId::new(),
                     ..Default::default()
                 };
-                let _ = nft_col.insert_one(&new_nft, None).await;
+                if save {
+                    let _ = nft_col.insert_one(&new_nft, None).await;
+                }
                 new_nft
             }
         }
     }
+
     pub async fn burn(&self, client: &Client) -> Result<UpdateResult, Error> {
         Nft::get_collection(client)
             .update_one(

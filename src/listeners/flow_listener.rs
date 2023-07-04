@@ -104,7 +104,7 @@ impl FlowListener<'_> {
                     ev.send(&self.notifier).await;
                 }
             }
-            println!("broke pipe listener");
+            error!("broke pipe listener");
         };
         tokio::join!(runner, event_listener);
         error!("listener stopped");
