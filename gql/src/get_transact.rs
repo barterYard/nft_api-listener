@@ -28,41 +28,41 @@ pub mod nft_transfer {
         #[serde(rename = "nftTransfers")]
         pub nft_transfers: NftTransferNftTransfers,
     }
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Clone)]
     pub struct NftTransferNftTransfers {
         pub edges: Vec<NftTransferNftTransfersEdges>,
         #[serde(rename = "pageInfo")]
         pub page_info: NftTransferNftTransfersPageInfo,
     }
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Clone)]
     pub struct NftTransferNftTransfersEdges {
         pub node: Option<NftTransferNftTransfersEdgesNode>,
     }
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Clone)]
     pub struct NftTransferNftTransfersEdgesNode {
         pub transaction: NftTransferNftTransfersEdgesNodeTransaction,
         pub nft: NftTransferNftTransfersEdgesNodeNft,
         pub from: Option<NftTransferNftTransfersEdgesNodeFrom>,
         pub to: Option<NftTransferNftTransfersEdgesNodeTo>,
     }
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Clone)]
     pub struct NftTransferNftTransfersEdgesNodeTransaction {
         pub time: Time,
     }
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Clone)]
     pub struct NftTransferNftTransfersEdgesNodeNft {
         #[serde(rename = "nftId")]
         pub nft_id: ID,
     }
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Clone)]
     pub struct NftTransferNftTransfersEdgesNodeFrom {
         pub address: ID,
     }
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Clone)]
     pub struct NftTransferNftTransfersEdgesNodeTo {
         pub address: ID,
     }
-    #[derive(Deserialize)]
+    #[derive(Deserialize, Clone)]
     pub struct NftTransferNftTransfersPageInfo {
         #[serde(rename = "hasNextPage")]
         pub has_next_page: Boolean,

@@ -1,6 +1,6 @@
-use std::error::Error;
 use std::fmt;
 use std::time::Duration;
+use std::{collections::HashMap, error::Error};
 
 use byc_helpers::mongo::{
     models::{
@@ -22,6 +22,8 @@ use get_deposit::getDepositEvent;
 use get_transact::nftTransfer;
 use log::{error, info};
 use tokio::time::{self, sleep};
+
+use crate::get_transact::nft_transfer::NftTransferNftTransfersEdges;
 
 const FLOWGRAPH_URL: &str =
     "https://query.flowgraph.co/?token=5a477c43abe4ded25f1e8cc778a34911134e0590";
@@ -173,7 +175,7 @@ pub async fn find_event(
     contract_id: &String,
     ev: String,
     after: Option<String>,
-    db_client: &Client,
+    _db_client: &Client,
 ) -> Option<String> {
     let t_id = Some(contract_id.clone() + &ev.clone());
 
@@ -245,9 +247,99 @@ pub async fn find_all_transactions(
         Some(x) => x.nft_transfers,
         _ => return after,
     };
-    let mut futs = vec![];
-    for event in events.edges {
+    let mut dup: Vec<String> = events
+        .edges
+        .clone()
+        .into_iter()
+        .map(|x| x.node.unwrap().nft.nft_id)
+        .collect();
+    dup.sort();
+    let mut map = HashMap::new();
+    for e in dup.clone() {
+        map.entry(e.clone()).or_insert(vec![]).push(e.clone());
+    }
+    dup.dedup();
+    let r: Vec<String> = map
+        .values()
+        .clone()
+        .into_iter()
+        .filter_map(|x| {
+            if x.len() > 1 {
+                Some(x[0].clone())
+            } else {
+                None
+            }
+        })
+        .collect();
+    let fut_events: Vec<NftTransferNftTransfersEdges> = events
+        .edges
+        .clone()
+        .into_iter()
+        .filter(|x| !r.contains(&x.node.clone().unwrap().nft.nft_id))
+        .collect();
+    if dup.len() != events.edges.len() {
+        let dup_event: Vec<NftTransferNftTransfersEdges> = events
+            .edges
+            .clone()
+            .into_iter()
+            .filter(|x| r.contains(&x.node.clone().unwrap().nft.nft_id))
+            .collect();
         let c = contract.clone();
+        for event in dup_event.clone() {
+            let tra = event.node.unwrap();
+            let from = match tra.from {
+                Some(x) => x.address,
+                _ => "0x0".to_string(),
+            };
+            let to = match tra.to {
+                Some(x) => x.address,
+                _ => "0x0".to_string(),
+            };
+
+            let (nft, created) =
+                GenNft::get_or_create(db_client, &c, tra.nft.nft_id.clone(), false).await;
+
+            match Transfert::get_or_create(
+                tra.transaction.time,
+                from.clone(),
+                to.clone(),
+                nft._id,
+                db_client,
+            )
+            .await
+            {
+                Some(x) => {
+                    if x.1 {
+                        if created {
+                            nft.insert(db_client).await;
+                        }
+                        if to == "0x0" && !nft.burned {
+                            nft.burn(db_client).await;
+                        }
+                        if from == "0x0" && nft.burned {
+                            nft.mint(db_client).await;
+                        }
+                        let mut from_owner = Owner::get_or_create(db_client, from.clone()).await;
+                        let mut to_owner = Owner::get_or_create(db_client, to.clone()).await;
+
+                        from_owner
+                            .remove_owned_nft(c.id.clone(), nft._id, db_client)
+                            .await;
+                        to_owner
+                            .add_owned_nft(nft._id, c.id.clone(), db_client)
+                            .await;
+                    }
+                }
+                _ => {}
+            }
+        }
+        info!("dup {}", dup_event.len());
+    }
+
+    let mut futs = vec![];
+    for event in fut_events {
+        let c = contract.clone();
+
         futs.push(async move {
             let tra = event.node.unwrap();
             let from = match tra.from {
@@ -299,6 +391,7 @@ pub async fn find_all_transactions(
     }
     info!("{}", futs.len());
     futures::future::join_all(futs).await;
+
     if events.page_info.has_next_page {
         Some(events.page_info.end_cursor)
     } else {

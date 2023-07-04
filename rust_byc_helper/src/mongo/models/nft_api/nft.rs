@@ -43,28 +43,13 @@ impl Nft {
         let nft_col = Nft::get_collection(client);
         match nft_col
             .find_one(
-                mongo_doc! {"contract": contract._id, "id": nft_id.clone(), "burned": false},
+                mongo_doc! {"contract": contract._id, "id": nft_id.clone()},
                 None,
             )
             .await
         {
-            Ok(y) => match y {
-                Some(nft) => return (nft, false),
-                _ => {
-                    let new_nft = Nft {
-                        contract: contract._id,
-                        contract_id: contract.id.clone(),
-                        id: nft_id,
-                        _id: bson::oid::ObjectId::new(),
-                        ..Default::default()
-                    };
-                    if save {
-                        let _ = nft_col.insert_one(&new_nft, None).await;
-                    }
-                    (new_nft, true)
-                }
-            },
-            Err(_) => {
+            Ok(Some(nft)) => return (nft, false),
+            _ => {
                 let new_nft = Nft {
                     contract: contract._id,
                     contract_id: contract.id.clone(),
