@@ -259,7 +259,8 @@ pub async fn find_all_transactions(
                 _ => "0x0".to_string(),
             };
 
-            let nft = GenNft::get_or_create(db_client, &c, tra.nft.nft_id.clone(), false).await;
+            let (nft, created) =
+                GenNft::get_or_create(db_client, &c, tra.nft.nft_id.clone(), false).await;
 
             match Transfert::get_or_create(
                 tra.transaction.time,
@@ -272,7 +273,9 @@ pub async fn find_all_transactions(
             {
                 Some(x) => {
                     if x.1 {
-                        nft.insert(db_client).await;
+                        if created {
+                            nft.insert(db_client).await;
+                        }
                         if to == "0x0" && !nft.burned {
                             nft.burn(db_client).await;
                         }
