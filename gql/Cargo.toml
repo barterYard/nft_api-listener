@@ -9,6 +9,7 @@ name="gql"
 
 [dependencies]
 byc_helpers = {path="../rust_byc_helper", features=["mongo", "logger"]}
+futures = "0.3.28"
 graphql_client = { version="0.11.0", features=["reqwest"]}
 log = "0.4.17"
 reqwest = "0.11.16"
