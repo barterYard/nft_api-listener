@@ -218,7 +218,7 @@ pub async fn find_all_transactions(
     db_client: &Client,
     client: &reqwest::Client,
 ) -> Option<String> {
-    let mut c = after;
+    let mut c = after.clone();
     if c.clone().unwrap_or("".to_string()) == "" {
         c = None;
     }
@@ -232,18 +232,18 @@ pub async fn find_all_transactions(
         Ok(x) => x,
         Err(_) => {
             sleep(time::Duration::from_millis(500)).await;
-            return c;
+            return after;
         }
     };
     let response_body: Response<<nftTransfer as GraphQLQuery>::ResponseData> =
         match res.json().await {
             Ok(x) => x,
-            _ => return c,
+            _ => return after,
         };
 
     let events = match response_body.data {
         Some(x) => x.nft_transfers,
-        _ => return c,
+        _ => return after,
     };
     let mut futs = vec![];
     for event in events.edges {
