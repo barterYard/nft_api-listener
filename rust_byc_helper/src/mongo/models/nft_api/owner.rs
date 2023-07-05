@@ -2,15 +2,9 @@ use std::collections::HashMap;
 
 use crate::mongo::models::{common::ModelCollection, mongo_doc};
 use bson::{oid::ObjectId, Document};
-use mongodb::{
-    error::Error,
-    results::{InsertOneResult, UpdateResult},
-    Client,
-};
+use mongodb::{error::Error, results::UpdateResult, Client};
 use proc::ModelCollection;
 use serde::{Deserialize, Serialize};
-
-use super::contract;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, ModelCollection)]
 pub struct Owner {
@@ -93,15 +87,16 @@ impl Owner {
         contract_id: String,
         client: &Client,
     ) -> Result<UpdateResult, Error> {
+        let field_name = contract_id.replace(".", "_");
         if self.nfts.is_none() {
             let mut nfts = HashMap::new();
-            nfts.insert(contract_id, vec![nft]);
+            nfts.insert(field_name, vec![nft]);
             self.nfts = Some(nfts)
         } else {
-            match self.nfts.as_mut().unwrap().get_mut(&contract_id) {
+            match self.nfts.as_mut().unwrap().get_mut(&field_name) {
                 Some(x) => x.push(nft),
                 _ => {
-                    self.nfts.as_mut().unwrap().insert(contract_id, vec![nft]);
+                    self.nfts.as_mut().unwrap().insert(field_name, vec![nft]);
                     {}
                 }
             };
@@ -115,21 +110,22 @@ impl Owner {
         nft: ObjectId,
         client: &Client,
     ) -> Result<UpdateResult, Error> {
+        let field_name = contract_id.replace(".", "_");
         if self.nfts.is_none() {
             let mut nfts = HashMap::new();
-            nfts.insert(contract_id.clone(), vec![nft]);
+            nfts.insert(field_name, vec![nft]);
             self.nfts = Some(nfts)
         } else {
-            match self.nfts.as_ref().unwrap().get(&contract_id) {
+            match self.nfts.as_ref().unwrap().get(&field_name) {
                 Some(_x) => {
                     let new_nfts = self.nfts.clone().unwrap();
-                    let mut doc = new_nfts.get(&contract_id).unwrap().clone();
+                    let mut doc = new_nfts.get(&field_name).unwrap().clone();
 
                     doc = doc
                         .into_iter()
                         .filter(|x| x.to_string() != nft.to_string())
                         .collect();
-                    self.nfts.as_mut().unwrap().insert(contract_id.clone(), doc);
+                    self.nfts.as_mut().unwrap().insert(field_name, doc);
                 }
                 _ => {}
             };

@@ -2,7 +2,7 @@ query nftTransfer($contractId: ID, $after: ID) {
   nftTransfers(
     contractId: $contractId
     after: $after
-    ordering: Descending
+    ordering: Ascending
     first: 50
   ) {
     edges {
