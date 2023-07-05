@@ -219,7 +219,7 @@ pub async fn find_all_transactions(
     after: Option<String>,
     db_client: &Client,
     client: &reqwest::Client,
-) -> Option<String> {
+) -> (Option<String>, usize) {
     let mut c = after.clone();
     if c.clone().unwrap_or("".to_string()) == "" {
         c = None;
@@ -234,18 +234,18 @@ pub async fn find_all_transactions(
         Ok(x) => x,
         Err(_) => {
             sleep(time::Duration::from_millis(500)).await;
-            return after;
+            return (after, 0);
         }
     };
     let response_body: Response<<nftTransfer as GraphQLQuery>::ResponseData> =
         match res.json().await {
             Ok(x) => x,
-            _ => return after,
+            _ => return (after, 0),
         };
 
     let events = match response_body.data {
         Some(x) => x.nft_transfers,
-        _ => return after,
+        _ => return (after, 0),
     };
     let mut dup: Vec<String> = events
         .edges
@@ -277,6 +277,7 @@ pub async fn find_all_transactions(
         .into_iter()
         .filter(|x| !r.contains(&x.node.clone().unwrap().nft.nft_id))
         .collect();
+    let mut count = 0;
     if dup.len() != events.edges.len() {
         let dup_event: Vec<NftTransferNftTransfersEdges> = events
             .edges
@@ -313,27 +314,28 @@ pub async fn find_all_transactions(
                         if created {
                             nft.insert(db_client).await;
                         }
-                        if to == "0x0" && !nft.burned {
-                            nft.burn(db_client).await;
-                        }
-                        if from == "0x0" && nft.burned {
-                            nft.mint(db_client).await;
-                        }
+
                         let mut from_owner = Owner::get_or_create(db_client, from.clone()).await;
                         let mut to_owner = Owner::get_or_create(db_client, to.clone()).await;
-
                         from_owner
                             .remove_owned_nft(c.id.clone(), nft._id, db_client)
                             .await;
                         to_owner
                             .add_owned_nft(nft._id, c.id.clone(), db_client)
                             .await;
+
+                        if to == "0x0" && !nft.burned {
+                            nft.burn(db_client).await;
+                        }
+                        if from == "0x0" && nft.burned {
+                            nft.mint(db_client).await;
+                        }
                     }
                 }
                 _ => {}
             }
         }
-        info!("dup {}", dup_event.len());
+        count += dup_event.len();
     }
 
     let mut futs = vec![];
@@ -368,33 +370,37 @@ pub async fn find_all_transactions(
                         if created {
                             nft.insert(db_client).await;
                         }
-                        if to == "0x0" && !nft.burned {
-                            nft.burn(db_client).await;
-                        }
-                        if from == "0x0" && nft.burned {
-                            nft.mint(db_client).await;
-                        }
+
                         let mut from_owner = Owner::get_or_create(db_client, from.clone()).await;
                         let mut to_owner = Owner::get_or_create(db_client, to.clone()).await;
 
                         from_owner
                             .remove_owned_nft(c.id.clone(), nft._id, db_client)
                             .await;
-                        to_owner
+
+                        match to_owner
                             .add_owned_nft(nft._id, c.id.clone(), db_client)
-                            .await;
+                            .await
+                        {
+                            Ok(_) => {}
+                            Err(error) => error!("{:?}", error),
+                        }
+                        if to == "0x0" && !nft.burned {
+                            nft.burn(db_client).await;
+                        }
                     }
                 }
                 _ => {}
             }
         });
     }
-    info!("{}", futs.len());
+    count += futs.len();
+    // info!("{}", futs.len());
     futures::future::join_all(futs).await;
 
     if events.page_info.has_next_page {
-        Some(events.page_info.end_cursor)
+        (Some(events.page_info.end_cursor), count)
     } else {
-        None
+        (None, count)
     }
 }

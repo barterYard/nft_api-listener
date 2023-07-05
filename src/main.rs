@@ -52,17 +52,21 @@ async fn main() {
     for c in c_vec.clone().into_iter() {
         // if c.id == "A.28abb9f291cadaf2.BarterYardClubWerewolf" {
         let mut s2 = Some("".to_string());
-
+        let mut total_nft = 0;
         info!("start {} ", c.identifier);
         while s2.is_some() {
-            s2 = gql::find_all_transactions(c.clone(), c.id.clone(), s2, &m_client, &client).await;
+            let x;
+            (s2, x) =
+                gql::find_all_transactions(c.clone(), c.id.clone(), s2, &m_client, &client).await;
+            total_nft += x;
         }
         contract_done += 1;
         info!(
-            "contract {} done {}/{}",
+            "contract {} done {}/{} with {} nfts",
             c.identifier,
             contract_done,
-            c_vec.len()
+            c_vec.len(),
+            total_nft
         );
         // }
     }
