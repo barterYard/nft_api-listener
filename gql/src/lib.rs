@@ -247,12 +247,23 @@ pub async fn find_all_transactions(
         Some(x) => x.nft_transfers,
         _ => return (after, 0),
     };
+    let mut should_restart = false;
     let mut dup: Vec<String> = events
         .edges
         .clone()
         .into_iter()
-        .map(|x| x.node.unwrap().nft.nft_id)
+        .filter_map(|x| {
+            if x.node.is_some() {
+                return Some(x.node.unwrap().nft.nft_id);
+            } else {
+                should_restart = true;
+            }
+            None
+        })
         .collect();
+    if should_restart {
+        return (after, 0);
+    }
     dup.sort();
     let mut map = HashMap::new();
     for e in dup.clone() {
@@ -317,18 +328,16 @@ pub async fn find_all_transactions(
 
                         let mut from_owner = Owner::get_or_create(db_client, from.clone()).await;
                         let mut to_owner = Owner::get_or_create(db_client, to.clone()).await;
-                        from_owner
+                        let _ = from_owner
                             .remove_owned_nft(c.id.clone(), nft._id, db_client)
                             .await;
-                        to_owner
+
+                        let _ = to_owner
                             .add_owned_nft(nft._id, c.id.clone(), db_client)
                             .await;
 
                         if to == "0x0" && !nft.burned {
-                            nft.burn(db_client).await;
-                        }
-                        if from == "0x0" && nft.burned {
-                            nft.mint(db_client).await;
+                            let _ = nft.burn(db_client).await;
                         }
                     }
                 }
@@ -374,19 +383,16 @@ pub async fn find_all_transactions(
                         let mut from_owner = Owner::get_or_create(db_client, from.clone()).await;
                         let mut to_owner = Owner::get_or_create(db_client, to.clone()).await;
 
-                        from_owner
+                        let _ = from_owner
                             .remove_owned_nft(c.id.clone(), nft._id, db_client)
                             .await;
 
-                        match to_owner
+                        let _ = to_owner
                             .add_owned_nft(nft._id, c.id.clone(), db_client)
-                            .await
-                        {
-                            Ok(_) => {}
-                            Err(error) => error!("{:?}", error),
-                        }
+                            .await;
+
                         if to == "0x0" && !nft.burned {
-                            nft.burn(db_client).await;
+                            let _ = nft.burn(db_client).await;
                         }
                     }
                 }
@@ -395,7 +401,6 @@ pub async fn find_all_transactions(
         });
     }
     count += futs.len();
-    // info!("{}", futs.len());
     futures::future::join_all(futs).await;
 
     if events.page_info.has_next_page {
