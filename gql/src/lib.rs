@@ -4,8 +4,7 @@ use std::{collections::HashMap, error::Error};
 
 use byc_helpers::mongo::{
     models::{
-        common::ModelCollection, mongo_doc, Contract, DateTime, Deployment, GenNft, Owner,
-        Transfert,
+        common::ModelCollection, mongo_doc, Contract, DateTime, Deployment, GenNft, Owner, Transfer,
     },
     mongodb::{bson, Client},
 };
@@ -311,7 +310,7 @@ pub async fn find_all_transactions(
             let (nft, created) =
                 GenNft::get_or_create(db_client, &c, tra.nft.nft_id.clone(), false).await;
 
-            match Transfert::get_or_create(
+            match Transfer::get_or_create(
                 tra.transaction.time,
                 from.clone(),
                 to.clone(),
@@ -365,7 +364,7 @@ pub async fn find_all_transactions(
             let (nft, created) =
                 GenNft::get_or_create(db_client, &c, tra.nft.nft_id.clone(), false).await;
 
-            match Transfert::get_or_create(
+            match Transfer::get_or_create(
                 tra.transaction.time,
                 from.clone(),
                 to.clone(),
