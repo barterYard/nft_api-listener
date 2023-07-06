@@ -44,6 +44,36 @@ impl Transfer {
             .await
     }
 
+    pub async fn find(
+        date: String,
+        from: String,
+        to: String,
+        nft: ObjectId,
+        client: &Client,
+    ) -> Option<Transfer> {
+        let transfer_col = Transfer::get_collection(client);
+        println!("{} from {} to {} {}", date, from, to, nft);
+        match transfer_col
+            .find_one(
+                mongo_doc! {
+                    "date": date.clone(),
+                    "from": from.clone(),
+                    "to": to.clone(),
+                    // "nft": nft.clone()
+                },
+                None,
+            )
+            .await
+        {
+            Ok(Some(c)) => Some(c),
+            Err(e) => {
+                error!("{:?}", e);
+                return None;
+            }
+            _ => None,
+        }
+    }
+
     pub async fn get_or_create(
         date: String,
         from: String,
