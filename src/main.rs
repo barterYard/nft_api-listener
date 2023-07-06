@@ -37,9 +37,7 @@ async fn main() {
         .unwrap();
     let c_vec: Vec<Contract> = cursor.try_collect().await.unwrap();
     // let db_contract: Vec<String> = c_vec.clone().into_iter().map(|x| x.id).collect();
-
     // let mut s = Some("".to_string());
-
     // while s.is_some() {
     // s = gql::find_created_events(s, &m_client, &mut db_contract, &client).await;
     // }
