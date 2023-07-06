@@ -1,7 +1,7 @@
 use crate::mongo::models::{common::ModelCollection, mongo_doc};
 use bson::oid::ObjectId;
 use log::{error, info};
-use mongodb::{error::Error, results::InsertOneResult, Client};
+use mongodb::{error::Error, results::InsertOneResult, Client, ClientSession};
 use proc::ModelCollection;
 use serde::{Deserialize, Serialize};
 
@@ -12,16 +12,18 @@ pub struct Transfer {
     pub from: String,
     pub to: String,
     pub nft: ObjectId,
+    pub contract: ObjectId,
 }
 
 impl Transfer {
-    pub fn new(date: String, from: String, to: String, nft: ObjectId) -> Self {
+    pub fn new(date: String, from: String, to: String, contract: ObjectId, nft: ObjectId) -> Self {
         Transfer {
             _id: ObjectId::new(),
             date,
             from,
             to,
             nft,
+            contract,
         }
     }
 
@@ -30,6 +32,7 @@ impl Transfer {
         from: String,
         to: String,
         nft: ObjectId,
+        contract: ObjectId,
         client: &Client,
     ) -> Result<InsertOneResult, Error> {
         let transfer = Transfer {
@@ -38,6 +41,7 @@ impl Transfer {
             from,
             to,
             nft,
+            contract,
         };
         Transfer::get_collection(client)
             .insert_one(transfer, None)
@@ -52,7 +56,7 @@ impl Transfer {
         client: &Client,
     ) -> Option<Transfer> {
         let transfer_col = Transfer::get_collection(client);
-        println!("{} from {} to {} {}", date, from, to, nft);
+
         match transfer_col
             .find_one(
                 mongo_doc! {
@@ -79,7 +83,9 @@ impl Transfer {
         from: String,
         to: String,
         nft: ObjectId,
+        contract: ObjectId,
         client: &Client,
+        session: Option<&mut ClientSession>,
     ) -> Option<(Transfer, bool)> {
         let transfer_col = Transfer::get_collection(client);
 
@@ -103,14 +109,18 @@ impl Transfer {
                     from,
                     to,
                     nft,
+                    contract,
                 };
-                match Transfer::get_collection(client)
-                    .insert_one(transfer.clone(), None)
-                    .await
-                {
-                    Ok(_) => {}
-                    Err(e) => {
-                        error!("{}", e);
+                let _ = match session {
+                    Some(x) => {
+                        Transfer::get_collection(client)
+                            .insert_one_with_session(transfer.clone(), None, x)
+                            .await
+                    }
+                    _ => {
+                        Transfer::get_collection(client)
+                            .insert_one(transfer.clone(), None)
+                            .await
                     }
                 };
 

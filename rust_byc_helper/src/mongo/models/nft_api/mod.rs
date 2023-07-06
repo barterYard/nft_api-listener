@@ -10,6 +10,18 @@ pub mod owner;
 pub mod transfer;
 
 pub async fn create_schema(m_client: &Client) -> Result<(), Box<dyn Error>> {
+    let contract_col = contract::Contract::get_collection(m_client);
+    match contract_col
+        .update_many(
+            mongo_doc! {"done": true},
+            mongo_doc! {"$set": {"done": false}},
+            None,
+        )
+        .await
+    {
+        Err(e) => println!("{:?}", e),
+        _ => {}
+    }
     let nft_col = nft::Nft::get_collection(m_client);
     nft_col.drop(None).await?;
     nft_col
