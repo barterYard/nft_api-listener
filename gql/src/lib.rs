@@ -85,6 +85,7 @@ pub async fn find_contract(
                 identifier: contract.identifier.clone(),
                 contract_type: format!("{:?}", contract.type_),
                 deployments: deps,
+                last_cursor: None,
                 done: false,
             };
 
@@ -253,20 +254,14 @@ pub async fn verify_transactions(
 
         let (nft, created) =
             GenNft::get_or_create(db_client, &contract, tra.nft.nft_id.clone(), false, None).await;
-        match Transfer::find(
+        Transfer::find(
             tra.transaction.time,
             from.clone(),
             to.clone(),
             nft._id,
             db_client,
         )
-        .await
-        {
-            Some(x) => println!("Found"),
-            None => {
-                println!("Not Found")
-            }
-        };
+        .await;
     }
     if events.page_info.has_next_page {
         (Some(events.page_info.end_cursor), 0)
@@ -398,7 +393,9 @@ async fn create_transfer(
         from.clone(),
         to.clone(),
         nft._id,
+        contract._id,
         db_client,
+        None,
     )
     .await
     {
