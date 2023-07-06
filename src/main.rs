@@ -9,7 +9,7 @@ use crate::listeners::{flow_listener::FlowNetwork, Requestable};
 
 use byc_helpers::mongo::{
     self,
-    models::{common::ModelCollection, create_nft_api_db, Contract},
+    models::{common::ModelCollection, create_nft_api_db, mongo_doc, Contract},
     mongodb::{options::IndexOptions, IndexModel},
 };
 use futures::TryStreamExt;
@@ -30,14 +30,19 @@ async fn main() {
     // if let Err(f) = File::open("already_run") {
     //     println!("{}", f);
     //     let _ = File::create("already_run");
-    //     create_nft_api_db(&m_client).await;
+    // create_nft_api_db(&m_client).await;
+    // return;
+
     // } else {
     //     println!("crashed");
     //     // return;
     // }
 
     let contracts_col = Contract::get_collection(&m_client);
-    let cursor = contracts_col.find(None, None).await.unwrap();
+    let cursor = contracts_col
+        .find(mongo_doc! {"done": false}, None)
+        .await
+        .unwrap();
     let c_vec: Vec<Contract> = cursor.try_collect().await.unwrap();
     // let db_contract: Vec<String> = c_vec.clone().into_iter().map(|x| x.id).collect();
 
@@ -48,21 +53,29 @@ async fn main() {
     // }
 
     let mut contract_done = 0;
-    // c_vec.reverse();
+
     for c in c_vec.clone().into_iter() {
-        // if c.id == "A.28abb9f291cadaf2.BarterYardClubWerewolf" {
+        // if c.id == "A.a039bd7d55a96c0c.DriverzNFT" {
         let mut s2 = Some("".to_string());
         let mut total_nft = 0;
         info!("start {} ", c.identifier);
         while s2.is_some() {
             let x;
-            (s2, x) =
-                gql::find_all_transactions(c.clone(), c.id.clone(), s2, &m_client, &client).await;
+            (s2, x) = gql::verify_transactions(c.clone(), s2, &m_client, &client).await;
             total_nft += x;
         }
         contract_done += 1;
+        c.update(
+            &m_client,
+            mongo_doc! {
+                "$set": {
+                    "done": true,
+                }
+            },
+        )
+        .await;
         info!(
-            "contract {} done {}/{} with {} nfts",
+            "contract {} done {}/{} with {} transactions",
             c.identifier,
             contract_done,
             c_vec.len(),

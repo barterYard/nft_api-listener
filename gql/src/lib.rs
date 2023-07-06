@@ -85,6 +85,7 @@ pub async fn find_contract(
                 identifier: contract.identifier.clone(),
                 contract_type: format!("{:?}", contract.type_),
                 deployments: deps,
+                done: false,
             };
 
             let contract_col = Contract::get_collection(db_client);
@@ -212,6 +213,68 @@ pub async fn find_event(
     }
 }
 
+pub async fn verify_transactions(
+    contract: Contract,
+    after: Option<String>,
+    db_client: &Client,
+    client: &reqwest::Client,
+) -> (Option<String>, u64) {
+    let mut c = after.clone();
+    if c.clone().unwrap_or("".to_string()) == "" {
+        c = None;
+    }
+    let variables = get_transact::nft_transfer::Variables {
+        after: c.clone(),
+        contract_id: Some(contract.id.clone()),
+    };
+    let query = nftTransfer::build_query(variables);
+
+    let res = match client.post(FLOWGRAPH_URL).json(&query).send().await {
+        Ok(x) => x,
+        Err(_) => {
+            sleep(time::Duration::from_millis(500)).await;
+            return (after, 0);
+        }
+    };
+    let response_body: Response<<nftTransfer as GraphQLQuery>::ResponseData> =
+        match res.json().await {
+            Ok(x) => x,
+            _ => return (after, 0),
+        };
+
+    let events = match response_body.data {
+        Some(x) => x.nft_transfers,
+        _ => return (after, 0),
+    };
+    for event in events.edges.clone() {
+        let tra = event.node.unwrap();
+        let from = tra.from.unwrap_or_default().address;
+        let to = tra.to.unwrap_or_default().address;
+
+        let (nft, created) =
+            GenNft::get_or_create(db_client, &contract, tra.nft.nft_id.clone(), false, None).await;
+        match Transfer::find(
+            tra.transaction.time,
+            from.clone(),
+            to.clone(),
+            nft._id,
+            db_client,
+        )
+        .await
+        {
+            Some(x) => println!("Found"),
+            None => {
+                println!("Not Found")
+            }
+        };
+    }
+    if events.page_info.has_next_page {
+        (Some(events.page_info.end_cursor), 0)
+    } else {
+        (None, 0)
+    }
+}
+
 pub async fn find_all_transactions(
     contract: Contract,
     contract_id: String,
@@ -281,12 +344,14 @@ pub async fn find_all_transactions(
             }
         })
         .collect();
+
     let fut_events: Vec<NftTransferNftTransfersEdges> = events
         .edges
         .clone()
         .into_iter()
         .filter(|x| !r.contains(&x.node.clone().unwrap().nft.nft_id))
         .collect();
+
     let mut count = 0;
     if dup.len() != events.edges.len() {
         let dup_event: Vec<NftTransferNftTransfersEdges> = events
@@ -295,109 +360,16 @@ pub async fn find_all_transactions(
             .into_iter()
             .filter(|x| r.contains(&x.node.clone().unwrap().nft.nft_id))
             .collect();
-        let c = contract.clone();
+
         for event in dup_event.clone() {
-            let tra = event.node.unwrap();
-            let from = match tra.from {
-                Some(x) => x.address,
-                _ => "0x0".to_string(),
-            };
-            let to = match tra.to {
-                Some(x) => x.address,
-                _ => "0x0".to_string(),
-            };
-
-            let (nft, created) =
-                GenNft::get_or_create(db_client, &c, tra.nft.nft_id.clone(), false).await;
-
-            match Transfer::get_or_create(
-                tra.transaction.time,
-                from.clone(),
-                to.clone(),
-                nft._id,
-                db_client,
-            )
-            .await
-            {
-                Some(x) => {
-                    if x.1 {
-                        if created {
-                            nft.insert(db_client).await;
-                        }
-
-                        let mut from_owner = Owner::get_or_create(db_client, from.clone()).await;
-                        let mut to_owner = Owner::get_or_create(db_client, to.clone()).await;
-                        let _ = from_owner
-                            .remove_owned_nft(c.id.clone(), nft._id, db_client)
-                            .await;
-
-                        let _ = to_owner
-                            .add_owned_nft(nft._id, c.id.clone(), db_client)
-                            .await;
-
-                        if to == "0x0" && !nft.burned {
-                            let _ = nft.burn(db_client).await;
-                        }
-                    }
-                }
-                _ => {}
-            }
+            create_transfer(event, db_client, &contract).await;
         }
         count += dup_event.len();
     }
 
     let mut futs = vec![];
     for event in fut_events {
-        let c = contract.clone();
-
-        futs.push(async move {
-            let tra = event.node.unwrap();
-            let from = match tra.from {
-                Some(x) => x.address,
-                _ => "0x0".to_string(),
-            };
-            let to = match tra.to {
-                Some(x) => x.address,
-                _ => "0x0".to_string(),
-            };
-
-            let (nft, created) =
-                GenNft::get_or_create(db_client, &c, tra.nft.nft_id.clone(), false).await;
-
-            match Transfer::get_or_create(
-                tra.transaction.time,
-                from.clone(),
-                to.clone(),
-                nft._id,
-                db_client,
-            )
-            .await
-            {
-                Some(x) => {
-                    if x.1 {
-                        if created {
-                            nft.insert(db_client).await;
-                        }
-
-                        let mut from_owner = Owner::get_or_create(db_client, from.clone()).await;
-                        let mut to_owner = Owner::get_or_create(db_client, to.clone()).await;
-
-                        let _ = from_owner
-                            .remove_owned_nft(c.id.clone(), nft._id, db_client)
-                            .await;
-
-                        let _ = to_owner
-                            .add_owned_nft(nft._id, c.id.clone(), db_client)
-                            .await;
-
-                        if to == "0x0" && !nft.burned {
-                            let _ = nft.burn(db_client).await;
-                        }
-                    }
-                }
-                _ => {}
-            }
-        });
+        futs.push(create_transfer(event, db_client, &contract));
     }
     count += futs.len();
     futures::future::join_all(futs).await;
@@ -406,5 +378,52 @@ pub async fn find_all_transactions(
         (Some(events.page_info.end_cursor), count)
     } else {
         (None, count)
+    }
+}
+
+async fn create_transfer(
+    event: NftTransferNftTransfersEdges,
+    db_client: &Client,
+    contract: &Contract,
+) {
+    let tra = event.node.unwrap();
+    let from = tra.from.unwrap_or_default().address;
+    let to = tra.to.unwrap_or_default().address;
+
+    let (nft, created) =
+        GenNft::get_or_create(db_client, contract, tra.nft.nft_id.clone(), false, None).await;
+
+    match Transfer::get_or_create(
+        tra.transaction.time,
+        from.clone(),
+        to.clone(),
+        nft._id,
+        db_client,
+    )
+    .await
+    {
+        Some((_x, true)) => {
+            if created {
+                nft.insert(db_client, None).await;
+            }
+
+            let mut from_owner = Owner::get_or_create(db_client, from.clone(), None).await;
+            let mut to_owner = Owner::get_or_create(db_client, to.clone(), None).await;
+            let _ = from_owner
+                .remove_owned_nft(contract.id.clone(), nft._id, db_client, None)
+                .await;
+
+            let _ = to_owner
+                .add_owned_nft(nft._id, contract.id.clone(), db_client, None)
+                .await;
+
+            if to == "0x0" && !nft.burned {
+                let _ = nft.burn(db_client, None).await;
+            }
+            if from == "0x0" && nft.burned {
+                let _ = nft.mint(db_client, None).await;
+            }
+        }
+        _ => {}
     }
 }

@@ -58,10 +58,28 @@ pub mod nft_transfer {
     pub struct NftTransferNftTransfersEdgesNodeFrom {
         pub address: ID,
     }
+
+    impl Default for NftTransferNftTransfersEdgesNodeFrom {
+        fn default() -> Self {
+            Self {
+                address: "0x0".to_string(),
+            }
+        }
+    }
+
     #[derive(Deserialize, Clone)]
     pub struct NftTransferNftTransfersEdgesNodeTo {
         pub address: ID,
     }
+
+    impl Default for NftTransferNftTransfersEdgesNodeTo {
+        fn default() -> Self {
+            Self {
+                address: "0x0".to_string(),
+            }
+        }
+    }
+
     #[derive(Deserialize, Clone)]
     pub struct NftTransferNftTransfersPageInfo {
         #[serde(rename = "hasNextPage")]
