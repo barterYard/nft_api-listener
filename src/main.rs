@@ -53,7 +53,7 @@ async fn main() {
         info!("start {} ", c.identifier);
         while s2.is_some() {
             let x;
-            (s2, x) = gql::verify_transactions(c.clone(), s2, &m_client, &client).await;
+            (s2, x) = gql::find_all_transactions(c.clone(), s2, &m_client, &client).await;
             if s2.is_some() {
                 c.clone()
                     .update(

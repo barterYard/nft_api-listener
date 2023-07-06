@@ -272,7 +272,7 @@ pub async fn verify_transactions(
 
 pub async fn find_all_transactions(
     contract: Contract,
-    contract_id: String,
+
     after: Option<String>,
     db_client: &Client,
     client: &reqwest::Client,
@@ -283,7 +283,7 @@ pub async fn find_all_transactions(
     }
     let variables = get_transact::nft_transfer::Variables {
         after: c.clone(),
-        contract_id: Some(contract_id.clone()),
+        contract_id: Some(contract.id.clone()),
     };
     let query = nftTransfer::build_query(variables);
 
