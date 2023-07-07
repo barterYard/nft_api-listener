@@ -60,9 +60,6 @@ impl Owner {
         client: &Client,
         session: Option<&mut ClientSession>,
     ) -> Result<UpdateResult, Error> {
-        if !operation.contains_key("$set") {
-            panic!("don't use this method to replace document");
-        }
         let o_col = Owner::get_collection(client);
         let q = mongo_doc! {"_id": self._id};
         match session {
