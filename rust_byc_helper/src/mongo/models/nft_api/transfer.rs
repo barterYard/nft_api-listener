@@ -63,7 +63,7 @@ impl Transfer {
                     "date": date.clone(),
                     "from": from.clone(),
                     "to": to.clone(),
-                    // "nft": nft.clone()
+                    "nft": nft.clone()
                 },
                 None,
             )

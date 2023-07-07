@@ -29,40 +29,45 @@ impl Owner {
         session: Option<&mut ClientSession>,
     ) -> Self {
         let owner_col = Owner::get_collection(client);
-        let mut address = address.clone();
-        if address == "null" {
-            address = "0x0".to_string();
-        }
+        let address = match address.as_str() {
+            "null" => "0x0".to_string(),
+            _ => address,
+        };
         match owner_col
             .find_one(mongo_doc! {"address": &address}, None)
             .await
         {
-            Ok(y) => match y {
-                Some(owner) => return owner,
-                _ => {
-                    let new_owner = Owner {
-                        address,
-                        _id: bson::oid::ObjectId::new(),
-                        ..Default::default()
-                    };
-                    if session.is_some() {
-                        let _ =
-                            owner_col.insert_one_with_session(&new_owner, None, session.unwrap());
-                    } else {
-                        let _ = owner_col.insert_one(&new_owner, None).await;
-                    }
-                    new_owner
-                }
-            },
-            Err(_) => {
+            Ok(Some(owner)) => return owner,
+            _ => {
                 let new_owner = Owner {
                     address,
                     _id: bson::oid::ObjectId::new(),
                     ..Default::default()
                 };
-                let _ = owner_col.insert_one(&new_owner, None).await;
+                let _ = match session {
+                    Some(s) => owner_col.insert_one_with_session(&new_owner, None, s).await,
+                    _ => owner_col.insert_one(&new_owner, None).await,
+                };
+
                 new_owner
             }
+        }
+    }
+
+    pub async fn update(
+        &self,
+        operation: Document,
+        client: &Client,
+        session: Option<&mut ClientSession>,
+    ) -> Result<UpdateResult, Error> {
+        if !operation.contains_key("$set") {
+            panic!("don't use this method to replace document");
+        }
+        let o_col = Owner::get_collection(client);
+        let q = mongo_doc! {"_id": self._id};
+        match session {
+            Some(s) => o_col.update_one_with_session(q, operation, None, s).await,
+            _ => o_col.update_one(q, operation, None).await,
         }
     }
 
@@ -74,28 +79,11 @@ impl Owner {
         session: Option<&mut ClientSession>,
     ) -> Result<UpdateResult, Error> {
         let field_name = "nfts.".to_owned() + &contract_id.replace(".", "_");
-        if session.is_some() {
-            Owner::get_collection(client)
-                .update_one_with_session(
-                    mongo_doc! {"_id": self._id},
-                    mongo_doc! {
-                        "$addToSet": {field_name: nft}
-                    },
-                    None,
-                    session.unwrap(),
-                )
-                .await
-        } else {
-            Owner::get_collection(client)
-                .update_one(
-                    mongo_doc! {"_id": self._id},
-                    mongo_doc! {
-                        "$addToSet": {field_name: nft}
-                    },
-                    None,
-                )
-                .await
-        }
+
+        let op = mongo_doc! {
+            "$addToSet": {field_name: nft}
+        };
+        self.update(op, client, session).await
     }
 
     pub async fn remove_owned_nft(
@@ -106,27 +94,9 @@ impl Owner {
         session: Option<&mut ClientSession>,
     ) -> Result<UpdateResult, Error> {
         let field_name = "nfts.".to_owned() + &contract_id.replace(".", "_");
-        if session.is_some() {
-            Owner::get_collection(client)
-                .update_one_with_session(
-                    mongo_doc! {"_id": self._id},
-                    mongo_doc! {
-                        "$pull": {field_name: nft}
-                    },
-                    None,
-                    session.unwrap(),
-                )
-                .await
-        } else {
-            Owner::get_collection(client)
-                .update_one(
-                    mongo_doc! {"_id": self._id},
-                    mongo_doc! {
-                        "$pull": {field_name: nft}
-                    },
-                    None,
-                )
-                .await
-        }
+        let op = mongo_doc! {
+            "$pull": {field_name: nft}
+        };
+        self.update(op, client, session).await
     }
 }

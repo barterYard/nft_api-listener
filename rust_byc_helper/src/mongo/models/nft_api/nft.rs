@@ -79,11 +79,18 @@ impl Nft {
         client: &Client,
         session: Option<&mut ClientSession>,
     ) -> Result<UpdateResult, Error> {
-        let op = mongo_doc! {"$set": mongo_doc! {
-            "burned": true,
-        }};
-        self.update(op, client, session).await
+        self.update(
+            mongo_doc! {
+                    "$set": mongo_doc! {
+                    "burned": true,
+                }
+            },
+            client,
+            session,
+        )
+        .await
     }
+
     pub async fn update(
         &self,
         update: Document,
