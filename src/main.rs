@@ -9,7 +9,7 @@ use crate::listeners::{flow_listener::FlowNetwork, Requestable};
 
 use byc_helpers::mongo::{
     self,
-    models::{common::ModelCollection, create_nft_api_db, mongo_doc, Contract, Transfer},
+    models::{common::ModelCollection, create_nft_api_db, mongo_doc, Contract, GenNft, Transfer},
     mongodb::{options::IndexOptions, IndexModel},
 };
 use futures::TryStreamExt;
@@ -28,6 +28,11 @@ async fn main() {
 
     // clear db
     // create_nft_api_db(&m_client).await;
+    // return;
+    // let nfts_col = GenNft::get_collection(&m_client);
+    // let nfts = nfts_col.find(mongo_doc!{"contract_id": "A.28abb9f291cadaf2.BarterYardClubWerewolf", "burned": false}, None).await.unwrap();
+    // let c_vec: Vec<GenNft> = nfts.try_collect().await.unwrap();
+    // println!("{}", c_vec.len());
     // return;
 
     let contracts_col = Contract::get_collection(&m_client);
