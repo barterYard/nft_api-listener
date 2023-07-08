@@ -2,6 +2,7 @@ use std::fmt;
 use std::time::Duration;
 use std::{collections::HashMap, error::Error};
 
+use byc_helpers::mongo::mongodb::change_stream::session;
 use byc_helpers::mongo::{
     models::{
         common::ModelCollection, mongo_doc, Contract, DateTime, Deployment, GenNft, Owner, Transfer,
@@ -399,27 +400,33 @@ async fn create_transfer(
     )
     .await
     {
-        Some((_x, true)) => {
+        Some((x, true)) => {
+            let mut session = db_client.start_session(None).await.unwrap();
+            let _ = session.start_transaction(None).await;
+
             if created {
-                nft.insert(db_client, None).await;
+                nft.insert(db_client, Some(&mut session)).await;
             }
 
-            let mut from_owner = Owner::get_or_create(db_client, from.clone(), None).await;
-            let mut to_owner = Owner::get_or_create(db_client, to.clone(), None).await;
+            let mut from_owner =
+                Owner::get_or_create(db_client, from.clone(), Some(&mut session)).await;
+            let mut to_owner =
+                Owner::get_or_create(db_client, to.clone(), Some(&mut session)).await;
             let _ = from_owner
-                .remove_owned_nft(contract.id.clone(), nft._id, db_client, None)
+                .remove_owned_nft(contract.id.clone(), nft._id, db_client, Some(&mut session))
                 .await;
 
             let _ = to_owner
-                .add_owned_nft(nft._id, contract.id.clone(), db_client, None)
+                .add_owned_nft(nft._id, contract.id.clone(), db_client, Some(&mut session))
                 .await;
 
             if to == "0x0" && !nft.burned {
-                let _ = nft.burn(db_client, None).await;
+                let _ = nft.burn(db_client, Some(&mut session)).await;
             }
             if from == "0x0" && nft.burned {
-                let _ = nft.mint(db_client, None).await;
+                let _ = nft.mint(db_client, Some(&mut session)).await;
             }
+            let _ = session.commit_transaction().await;
         }
         _ => {}
     }
