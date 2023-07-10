@@ -37,11 +37,15 @@ async fn main() {
 
     let contracts_col = Contract::get_collection(&m_client);
     let cursor = contracts_col
-        .find(mongo_doc! {"done": false}, None)
+        .find(
+            mongo_doc! {"identifier": {"$in": ["LNVCT", "TopShot", "AllDay"]}, "done": true},
+            None,
+        )
         .await
         .unwrap();
 
     let c_vec: Vec<Contract> = cursor.try_collect().await.unwrap();
+
     // let db_contract: Vec<String> = c_vec.clone().into_iter().map(|x| x.id).collect();
     // let mut s = Some("".to_string());
     // while s.is_some() {
