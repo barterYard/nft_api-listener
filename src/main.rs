@@ -38,7 +38,7 @@ async fn main() {
     let contracts_col = Contract::get_collection(&m_client);
     let cursor = contracts_col
         .find(
-            mongo_doc! {"identifier": {"$in": ["LNVCT", "TopShot", "AllDay"]}, "done": true},
+            mongo_doc! {"identifier": {"$in": ["TopShot", "AllDay"]}, "done": true},
             None,
         )
         .await
