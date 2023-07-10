@@ -14,7 +14,7 @@ pub async fn create_schema(m_client: &Client) -> Result<(), Box<dyn Error>> {
     match contract_col
         .update_many(
             mongo_doc! {"done": true},
-            mongo_doc! {"$set": {"done": false}},
+            mongo_doc! {"$set": {"done": false, "lastCursor": ""}},
             None,
         )
         .await

@@ -27,7 +27,7 @@ async fn main() {
         .unwrap();
 
     // clear db
-    create_nft_api_db(&m_client).await;
+    // create_nft_api_db(&m_client).await;
     // return;
     // let nfts_col = GenNft::get_collection(&m_client);
     // let nfts = nfts_col.find(mongo_doc!{"contract_id": "A.28abb9f291cadaf2.BarterYardClubWerewolf", "burned": false}, None).await.unwrap();
@@ -40,6 +40,7 @@ async fn main() {
         .find(mongo_doc! {"done": false}, None)
         .await
         .unwrap();
+
     let c_vec: Vec<Contract> = cursor.try_collect().await.unwrap();
     // let db_contract: Vec<String> = c_vec.clone().into_iter().map(|x| x.id).collect();
     // let mut s = Some("".to_string());
