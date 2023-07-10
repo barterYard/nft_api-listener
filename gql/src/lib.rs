@@ -290,7 +290,7 @@ pub async fn find_all_transactions(
     let res = match client.post(FLOWGRAPH_URL).json(&query).send().await {
         Ok(x) => x,
         Err(_) => {
-            sleep(time::Duration::from_millis(500)).await;
+            sleep(time::Duration::from_millis(200)).await;
             return (after, 0);
         }
     };
