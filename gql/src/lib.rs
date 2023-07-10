@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fmt;
 use std::time::Duration;
 use std::{collections::HashMap, error::Error};
@@ -252,8 +253,14 @@ pub async fn verify_transactions(
         let from = tra.from.unwrap_or_default().address;
         let to = tra.to.unwrap_or_default().address;
 
-        let (nft, created) =
-            GenNft::get_or_create(db_client, &contract, tra.nft.nft_id.clone(), false, None).await;
+        let (nft, created) = GenNft::get_or_create(
+            db_client,
+            &contract,
+            tra.nft.nft_id.parse::<i64>().unwrap(),
+            false,
+            None,
+        )
+        .await;
         Transfer::find(
             tra.transaction.time,
             from.clone(),
@@ -339,6 +346,26 @@ pub async fn find_all_transactions(
             }
         })
         .collect();
+    let to_owners: HashSet<String> = events
+        .edges
+        .clone()
+        .into_iter()
+        .map(|x| x.node.unwrap().to.unwrap_or_default().address)
+        .collect();
+    let from_owners: HashSet<String> = events
+        .edges
+        .clone()
+        .into_iter()
+        .map(|x| x.node.unwrap().from.unwrap_or_default().address)
+        .collect();
+
+    let hash_set: HashSet<&String> = to_owners.union(&from_owners).collect();
+
+    let mut owners = HashMap::<String, Owner>::new();
+    for owner in hash_set {
+        let db_owner = Owner::get_or_create(db_client, owner.clone(), None).await;
+        owners.insert(owner.clone(), db_owner);
+    }
 
     let fut_events: Vec<NftTransferNftTransfersEdges> = events
         .edges
@@ -357,14 +384,14 @@ pub async fn find_all_transactions(
             .collect();
 
         for event in dup_event.clone() {
-            create_transfer(event, db_client, &contract).await;
+            create_transfer(event, db_client, &owners, &contract).await;
         }
         count += dup_event.len();
     }
 
     let mut futs = vec![];
     for event in fut_events {
-        futs.push(create_transfer(event, db_client, &contract));
+        futs.push(create_transfer(event, db_client, &owners, &contract));
     }
     count += futs.len();
     futures::future::join_all(futs).await;
@@ -379,48 +406,31 @@ pub async fn find_all_transactions(
 async fn create_transfer(
     event: NftTransferNftTransfersEdges,
     db_client: &Client,
+    owners: &HashMap<String, Owner>,
     contract: &Contract,
 ) {
     let tra = event.node.unwrap();
     let from = tra.from.unwrap_or_default().address;
     let to = tra.to.unwrap_or_default().address;
+    let nft_id = tra.nft.nft_id.parse::<i64>().unwrap();
+    let to_owner = owners.get(&to).unwrap();
 
-    let (nft, created) =
-        GenNft::get_or_create(db_client, contract, tra.nft.nft_id.clone(), false, None).await;
-
-    match Transfer::get_or_create(
+    Transfer::get_or_create(
         tra.transaction.time,
         from.clone(),
         to.clone(),
-        nft._id,
+        nft_id,
         contract._id,
         db_client,
         None,
     )
-    .await
-    {
-        Some((_x, true)) => {
-            if created {
-                nft.insert(db_client, None).await;
-            }
-
-            let mut from_owner = Owner::get_or_create(db_client, from.clone(), None).await;
-            let mut to_owner = Owner::get_or_create(db_client, to.clone(), None).await;
-            let _ = from_owner
-                .remove_owned_nft(contract.id.clone(), nft._id, db_client, None)
-                .await;
-
-            let _ = to_owner
-                .add_owned_nft(nft._id, contract.id.clone(), db_client, None)
-                .await;
-
-            if to == "0x0" && !nft.burned {
-                let _ = nft.burn(db_client, None).await;
-            }
-            if from == "0x0" && nft.burned {
-                let _ = nft.mint(db_client, None).await;
-            }
-        }
-        _ => {}
-    }
+    .await;
+    let (nft, _) = GenNft::get_or_create(db_client, contract, nft_id, true, None).await;
+    let _ = nft
+        .update(
+            mongo_doc! {"$set": {"owner": to_owner._id, "burned": to == "0x0"}},
+            db_client,
+            None,
+        )
+        .await;
 }

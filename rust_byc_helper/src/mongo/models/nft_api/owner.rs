@@ -37,18 +37,22 @@ impl Owner {
             .find_one(mongo_doc! {"address": &address}, None)
             .await
         {
-            Ok(Some(owner)) => return owner,
+            Ok(Some(owner)) => {
+                return owner;
+            }
             _ => {
                 let new_owner = Owner {
                     address,
                     _id: bson::oid::ObjectId::new(),
                     ..Default::default()
                 };
-                let _ = match session {
+                let res = match session {
                     Some(s) => owner_col.insert_one_with_session(&new_owner, None, s).await,
                     _ => owner_col.insert_one(&new_owner, None).await,
                 };
-
+                if res.is_err() {
+                    println!("owner {:?}", res.err());
+                }
                 new_owner
             }
         }

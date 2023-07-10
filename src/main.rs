@@ -27,7 +27,7 @@ async fn main() {
         .unwrap();
 
     // clear db
-    // create_nft_api_db(&m_client).await;
+    create_nft_api_db(&m_client).await;
     // return;
     // let nfts_col = GenNft::get_collection(&m_client);
     // let nfts = nfts_col.find(mongo_doc!{"contract_id": "A.28abb9f291cadaf2.BarterYardClubWerewolf", "burned": false}, None).await.unwrap();
