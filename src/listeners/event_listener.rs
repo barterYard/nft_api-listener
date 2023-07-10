@@ -43,6 +43,7 @@ impl EventListener {
                 .append(&mut events::WithdrawEvent::get_event_types());
             self.events.sort();
             self.events.dedup();
+
             let mut latest_block = match self.client.latest_block_header(Seal::Sealed).await {
                 Ok(block) => {
                     if self.last_requested_block > block.height {

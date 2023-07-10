@@ -40,6 +40,7 @@ async fn main() {
         .find(mongo_doc! {"done": false}, None)
         .await
         .unwrap();
+
     let c_vec: Vec<Contract> = cursor.try_collect().await.unwrap();
     // let db_contract: Vec<String> = c_vec.clone().into_iter().map(|x| x.id).collect();
     // let mut s = Some("".to_string());

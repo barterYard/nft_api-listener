@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use crate::mongo::models::{common::ModelCollection, mongo_doc};
 use bson::{oid::ObjectId, Document};
-use log::info;
 use mongodb::{error::Error, results::UpdateResult, Client, ClientSession};
 use proc::ModelCollection;
 use serde::{Deserialize, Serialize};
@@ -11,15 +10,13 @@ use serde::{Deserialize, Serialize};
 pub struct Owner {
     pub _id: ObjectId,
     pub address: String,
-    pub nfts: HashMap<String, Vec<ObjectId>>,
 }
 
 impl Owner {
-    pub fn new(address: String, nfts: Option<HashMap<String, Vec<ObjectId>>>) -> Self {
+    pub fn new(address: String) -> Self {
         Owner {
             _id: ObjectId::new(),
             address,
-            nfts: nfts.unwrap_or_default(),
         }
     }
 
@@ -37,18 +34,16 @@ impl Owner {
             .find_one(mongo_doc! {"address": &address}, None)
             .await
         {
-            Ok(Some(owner)) => return owner,
+            Ok(Some(owner)) => owner,
             _ => {
-                let new_owner = Owner {
-                    address,
-                    _id: bson::oid::ObjectId::new(),
-                    ..Default::default()
-                };
-                let _ = match session {
+                let new_owner = Owner::new(address);
+                let res = match session {
                     Some(s) => owner_col.insert_one_with_session(&new_owner, None, s).await,
                     _ => owner_col.insert_one(&new_owner, None).await,
                 };
-
+                if res.is_err() {
+                    println!("owner {:?}", res.err());
+                }
                 new_owner
             }
         }
@@ -66,34 +61,5 @@ impl Owner {
             Some(s) => o_col.update_one_with_session(q, operation, None, s).await,
             _ => o_col.update_one(q, operation, None).await,
         }
-    }
-
-    pub async fn add_owned_nft(
-        &mut self,
-        nft: ObjectId,
-        contract_id: String,
-        client: &Client,
-        session: Option<&mut ClientSession>,
-    ) -> Result<UpdateResult, Error> {
-        let field_name = "nfts.".to_owned() + &contract_id.replace(".", "_");
-
-        let op = mongo_doc! {
-            "$addToSet": {field_name: nft}
-        };
-        self.update(op, client, session).await
-    }
-
-    pub async fn remove_owned_nft(
-        &mut self,
-        contract_id: String,
-        nft: ObjectId,
-        client: &Client,
-        session: Option<&mut ClientSession>,
-    ) -> Result<UpdateResult, Error> {
-        let field_name = "nfts.".to_owned() + &contract_id.replace(".", "_");
-        let op = mongo_doc! {
-            "$pull": {field_name: nft}
-        };
-        self.update(op, client, session).await
     }
 }
