@@ -415,7 +415,7 @@ async fn create_transfer(
     let nft_id = tra.nft.nft_id.parse::<i64>().unwrap();
     let to_owner = owners.get(&to).unwrap();
 
-    Transfer::get_or_create(
+    let (mut transfer, created) = Transfer::get_or_create(
         tra.transaction.time,
         from.clone(),
         to.clone(),
@@ -424,8 +424,14 @@ async fn create_transfer(
         db_client,
         None,
     )
-    .await;
+    .await
+    .unwrap();
+    if !created {
+        return;
+    }
     let (nft, _) = GenNft::get_or_create(db_client, contract, nft_id, true, None).await;
+    transfer.nft = Some(nft._id);
+    let _ = transfer.save(db_client).await;
     let _ = nft
         .update(
             mongo_doc! {"$set": {"owner": to_owner._id, "burned": to == "0x0"}},

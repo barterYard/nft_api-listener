@@ -9,7 +9,10 @@ use crate::listeners::{flow_listener::FlowNetwork, Requestable};
 
 use byc_helpers::mongo::{
     self,
-    models::{common::ModelCollection, create_nft_api_db, mongo_doc, Contract, GenNft, Transfer},
+    models::{
+        common::ModelCollection, create_nft_api_db, create_transfer_index, mongo_doc, Contract,
+        GenNft, Transfer,
+    },
     mongodb::{options::IndexOptions, IndexModel},
 };
 use futures::TryStreamExt;
@@ -55,7 +58,6 @@ async fn main() {
     let mut contract_done = 0;
 
     for c in c_vec.clone().into_iter() {
-        // if c.id == "A.a039bd7d55a96c0c.DriverzNFT" {
         let mut s2 = Some(c.last_cursor.clone().unwrap_or_default());
         let mut total_nft = 0;
         info!("start {} ", c.identifier);
@@ -93,7 +95,6 @@ async fn main() {
             c_vec.len(),
             total_nft
         );
-        // }
     }
 
     // let events: &mut Vec<&str> = &mut vec!["flow.AccountContractAdded"];
