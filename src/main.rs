@@ -39,13 +39,7 @@ async fn main() {
     // return;
 
     let contracts_col = Contract::get_collection(&m_client);
-    let cursor = contracts_col
-        .find(
-            mongo_doc! {"identifier": {"$in": ["TopShot", "AllDay", "FLOAT", "LNVCT"]}, "done": true},
-            None,
-        )
-        .await
-        .unwrap();
+    let cursor = contracts_col.find(mongo_doc! {}, None).await.unwrap();
 
     let c_vec: Vec<Contract> = cursor.try_collect().await.unwrap();
 
