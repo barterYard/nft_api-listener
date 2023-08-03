@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use byc_helpers::mongo::mongodb::Client;
+use flow_helpers::mongo::mongodb::Client;
 use graphql_client::{GraphQLQuery, Response};
 
 use crate::FLOWGRAPH_URL;

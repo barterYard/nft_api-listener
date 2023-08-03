@@ -2,9 +2,9 @@ use crate::listeners::{Cadencable, Messageable, Requestable};
 use crate::notifiers::{BaseClient, Notifier};
 use async_trait::async_trait;
 
-use byc_helpers::mongo::models::common::ModelCollection;
-use byc_helpers::mongo::models::{mongo_doc, Contract};
-use byc_helpers::mongo::mongodb::bson;
+use flow_helpers::mongo::models::common::ModelCollection;
+use flow_helpers::mongo::models::Contract;
+use flow_helpers::mongo::mongodb::bson;
 use flow_sdk::prelude::cadence_json::{CompositeOwned, ValueOwned};
 use serde::{Deserialize, Serialize};
 
@@ -79,7 +79,7 @@ impl Messageable for ContractAddedEvent {
                 contract_type: "".to_string(),
                 ..Default::default()
             };
-            contract_collection.insert_one(contract, None).await;
+            let _ = contract_collection.insert_one(contract, None).await;
         }
         if let Some(webhooks) = notifier.webhooks {
             if let Some(webhook) = webhooks
