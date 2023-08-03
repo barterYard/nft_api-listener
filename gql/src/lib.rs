@@ -3,7 +3,7 @@ use std::fmt;
 use std::time::Duration;
 use std::{collections::HashMap, error::Error};
 
-use byc_helpers::mongo::{
+use flow_helpers::mongo::{
     models::{
         common::ModelCollection, mongo_doc, Contract, DateTime, Deployment, GenNft, Owner, Transfer,
     },
@@ -278,8 +278,7 @@ pub async fn verify_transactions(
 }
 
 pub async fn find_all_transactions(
-    contract: Contract,
-
+    contract: &Contract,
     after: Option<String>,
     db_client: &Client,
     client: &reqwest::Client,
