@@ -3,6 +3,7 @@ use crate::notifiers::webhook::client;
 use crate::notifiers::{BaseClient, Notifier};
 use async_trait::async_trait;
 
+use flow_helpers::flow_sdk;
 use flow_helpers::mongo;
 use flow_helpers::mongo::models::common::ModelCollection;
 use flow_helpers::mongo::models::{mongo_doc, Contract};
