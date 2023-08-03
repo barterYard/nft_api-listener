@@ -7,9 +7,9 @@ edition = "2021"
 
 [dependencies]
 async-trait = "0.1.68"
-flow-sdk = { git = "https://github.com/barterYard/flow.rs", branch = "master" }
 flow_helpers = { git = "https://github.com/barterYard/rust_flow_helper", branch = "main", features = [
   "mongo",
+  "flow",
   "logger",
 ] }
 futures = { version = "0.3.28" }
