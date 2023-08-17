@@ -41,15 +41,14 @@ impl ToField for CompositeOwned {
 impl Cadencable for WithdrawEvent {
     fn from_cadence(obj: &CompositeOwned) -> WithdrawEvent {
         let (id, from) = obj.get_listing_field();
-
         WithdrawEvent { id, from }
     }
 }
 
 impl Requestable for WithdrawEvent {
-    fn get_event_types() -> Vec<&'static str> {
+    fn get_event_types() -> Vec<String> {
         // read db
-        vec![".Withdraw"]
+        vec![".Withdraw".to_string()]
     }
 }
 

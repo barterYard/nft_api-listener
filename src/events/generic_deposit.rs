@@ -51,10 +51,10 @@ impl Cadencable for DepositEvent {
 }
 
 impl Requestable for DepositEvent {
-    fn get_event_types() -> Vec<&'static str> {
+    fn get_event_types() -> Vec<String> {
         // read db
 
-        vec![".Deposit"]
+        vec![".Deposit".to_string()]
     }
 }
 

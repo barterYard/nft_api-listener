@@ -22,10 +22,10 @@ impl WebhookClient {
             FlowNetwork::Mainnet => self.mainnet_endpoint,
         }
     }
-    pub fn event(&self) -> &'static str {
+    pub fn event(&self) -> String {
         match FlowNetwork::get() {
-            FlowNetwork::Testnet => self.testnet_event,
-            FlowNetwork::Mainnet => self.mainnet_event,
+            FlowNetwork::Testnet => self.testnet_event.to_string(),
+            FlowNetwork::Mainnet => self.mainnet_event.to_string(),
         }
     }
 }

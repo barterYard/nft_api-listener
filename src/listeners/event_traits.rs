@@ -16,12 +16,12 @@ pub trait Requestable
 where
     Self: Sized,
 {
-    fn get_event_types() -> Vec<&'static str>;
-    fn get_events_from(events: &(&str, Vec<Event>)) -> Vec<Self>
+    fn get_event_types() -> Vec<String>;
+    fn get_events_from(events: &(String, Vec<Event>)) -> Vec<Self>
     where
         Self: Cadencable,
     {
-        if !Self::get_event_types().contains(&events.0) {
+        if !Self::get_event_types().contains(&events.0.to_string()) {
             return vec![];
         }
         let mut result: Vec<Self> = vec![];
@@ -37,11 +37,11 @@ where
         }
         result
     }
-    fn feed_events(event_list: &mut Vec<Box<dyn Messageable>>, events: &(&str, Vec<Event>))
+    fn feed_events(event_list: &mut Vec<Box<dyn Messageable>>, events: &(String, Vec<Event>))
     where
         Self: Requestable + Cadencable + Messageable,
     {
-        if !Self::get_event_types().contains(&events.0) {
+        if !Self::get_event_types().contains(&events.0.to_string()) {
             return;
         }
         Self::get_events_from(events)

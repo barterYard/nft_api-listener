@@ -59,8 +59,8 @@ impl Cadencable for ContractAddedEvent {
 }
 
 impl Requestable for ContractAddedEvent {
-    fn get_event_types() -> Vec<&'static str> {
-        vec!["flow.AccountContractAdded"]
+    fn get_event_types() -> Vec<String> {
+        vec!["flow.AccountContractAdded".to_string()]
     }
 }
 

@@ -1,7 +1,10 @@
 use super::event_listener::EventListener;
 use crate::listeners::Messageable;
 use crate::notifiers::Notifier;
-use flow_helpers::flow_sdk;
+use flow_helpers::{
+    flow_sdk,
+    mongo::models::{common::ModelCollection, Contract},
+};
 use flow_sdk::{entities::Event, prelude::TonicHyperFlowClient};
 
 use log::{error, info};
@@ -47,7 +50,7 @@ pub struct FlowListener<'a> {
 }
 
 pub trait Events {
-    fn feed_events(_event_list: &mut Vec<Box<dyn Messageable>>, _events: (&str, Vec<Event>)) {
+    fn feed_events(_event_list: &mut Vec<Box<dyn Messageable>>, _events: &(String, Vec<Event>)) {
         panic!("must be implemented in client");
     }
 }
@@ -61,14 +64,15 @@ pub trait Events {
 impl FlowListener<'_> {
     pub async fn create<'a>(
         notifier: Notifier<'a>,
-        events: &mut Vec<&'static str>,
+        events: &mut Vec<String>,
     ) -> Result<FlowListener<'a>, Box<dyn Error>> {
         // create flow mainnet client
         let network = FlowNetwork::get();
         let mut client = network.get_flow_client().await;
         client.ping().await?;
+
         // register events
-        let mut w_events: Vec<&str> = notifier
+        let mut w_events: Vec<String> = notifier
             .webhooks
             .unwrap()
             .iter()
@@ -89,17 +93,17 @@ impl FlowListener<'_> {
     }
 
     // Helper to register all events in one place
-
     pub async fn start(&mut self) {
         info!("start listener");
 
-        let (mut sx, mut rx) = channel::<(&str, Vec<Event>)>(10);
+        let (mut sx, mut rx) = channel::<(String, Vec<Event>)>(10);
         let runner = self.event_listener.set_listener_events(&mut sx);
 
         let event_listener = async {
             while let Some(events) = rx.recv().await {
                 let event_list: &mut Vec<Box<dyn Messageable>> = &mut Vec::new();
-                FlowListener::feed_events(event_list, events);
+                info!("here {}", event_list.len());
+                FlowListener::feed_events(event_list, &events);
 
                 for ev in event_list {
                     ev.send(&self.notifier).await;
